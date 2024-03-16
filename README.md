@@ -1,0 +1,5 @@
+# sqlprof
+
+```
+sqlprof go.trace
+```
