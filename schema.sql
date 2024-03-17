@@ -16,6 +16,28 @@ CREATE TABLE pprof.samples (
     label_ids UBIGINT[]
 );
 
+CREATE TABLE pprof.locations (
+    location_id UBIGINT,
+    mapping_id UBIGINT,
+    address UBIGINT,
+    is_folded BOOLEAN
+);
+
+CREATE TABLE pprof.lines (
+    location_id UBIGINT,
+    function_id UBIGINT,
+    line BIGINT,
+    col BIGINT
+);
+
+CREATE TABLE pprof.functions (
+    function_id UBIGINT,
+    name TEXT,
+    system_name TEXT,
+    file TEXT,
+    start_line BIGINT
+);
+
 CREATE TABLE pprof.labels (
     label_id UBIGINT,
     sample_id UBIGINT,

@@ -7,9 +7,10 @@ SELECT
         FROM pprof.sample_types
         WHERE type = 'cpu' AND unit = 'nanoseconds'
     )]/1e6 AS cpu_ms,
-    location_ids,
     file,
     sample_id,
+    location_ids,
+    -- array_agg(samples_locations.location_id) AS location_ids,
     map_from_entries(
         array_agg({k: key, v: str} ORDER BY key) FILTER (WHERE key != '')
     ) AS labels,
@@ -17,4 +18,5 @@ SELECT
     -- array_agg(str) FILTER (WHERE str != '') AS label_vals
 FROM pprof.samples
 LEFT JOIN pprof.labels USING (sample_id)
+-- LEFT JOIN unnest(samples.location_ids) AS samples_locations(location_id) ON true
 GROUP BY 1,2,3,4;
