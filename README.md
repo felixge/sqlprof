@@ -1,5 +1,1 @@
 # sqlprof
-
-```
-sqlprof go.trace
-```
