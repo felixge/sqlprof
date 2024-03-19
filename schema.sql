@@ -9,11 +9,17 @@ CREATE TABLE pprof.sample_types (
 );
 
 CREATE TABLE pprof.samples (
-    file TEXT,
+    source TEXT,
     sample_id UBIGINT,
     location_ids UBIGINT[],
     values BIGINT[],
     label_ids UBIGINT[]
+);
+
+CREATE TABLE pprof.locations_samples (
+    location_id UBIGINT,
+    sample_id UBIGINT,
+    index UTINYINT,
 );
 
 CREATE TABLE pprof.locations (

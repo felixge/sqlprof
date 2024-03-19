@@ -6,7 +6,7 @@ Note: Not implemented yet.
 
 ```sql
 SELECT *
-FROM cpu_time
+FROM pprof.cpu_time
 WHERE list_contains(functions, 'runtime.mallocgc');
 ```
 

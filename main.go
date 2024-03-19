@@ -104,6 +104,11 @@ func importPPROF(ctx context.Context, f *File, dst *DB) (rErr error) {
 		return err
 	}
 
+	locationsSamples, err := newAppender("locations_samples")
+	if err != nil {
+		return err
+	}
+
 	labels, err := newAppender("labels")
 	if err != nil {
 		return err
@@ -153,6 +158,30 @@ func importPPROF(ctx context.Context, f *File, dst *DB) (rErr error) {
 		}
 	}
 
+	for _, l := range prof.Location {
+		row := []driver.Value{
+			l.ID,
+			l.Mapping.ID,
+			l.Address,
+			l.IsFolded,
+		}
+		if err := locations.AppendRow(row...); err != nil {
+			return err
+		}
+
+		for _, ln := range l.Line {
+			row := []driver.Value{
+				l.ID,
+				ln.Function.ID,
+				ln.Line,
+				ln.Column,
+			}
+			if err := lines.AppendRow(row...); err != nil {
+				return err
+			}
+		}
+	}
+
 	var labelID uint64
 	var sampleID uint64
 	for _, s := range prof.Sample {
@@ -163,24 +192,11 @@ func importPPROF(ctx context.Context, f *File, dst *DB) (rErr error) {
 
 			row := []driver.Value{
 				l.ID,
-				l.Mapping.ID,
-				l.Address,
-				l.IsFolded,
+				sampleID,
+				uint8(i),
 			}
-			if err := locations.AppendRow(row...); err != nil {
+			if err := locationsSamples.AppendRow(row...); err != nil {
 				return err
-			}
-
-			for _, ln := range l.Line {
-				row := []driver.Value{
-					l.ID,
-					ln.Function.ID,
-					ln.Line,
-					ln.Column,
-				}
-				if err := lines.AppendRow(row...); err != nil {
-					return err
-				}
 			}
 		}
 
