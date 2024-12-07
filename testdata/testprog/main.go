@@ -41,12 +41,26 @@ func generateTrace(path string) error {
 	defer trace.Stop()
 
 	// Create scheduling events to trace.
+	runSleep()
+	chanUnblock()
+
+	return nil
+}
+
+func chanUnblock() {
+	ch := make(chan struct{})
+	go func() {
+		time.Sleep(10 * time.Millisecond)
+		ch <- struct{}{}
+	}()
+	<-ch
+}
+
+func runSleep() {
 	for i := 0; i < 100; i++ {
 		cpuHog(time.Duration(i) * time.Millisecond)
 		time.Sleep(time.Duration(i) * time.Millisecond)
 	}
-
-	return nil
 }
 
 func cpuHog(d time.Duration) {

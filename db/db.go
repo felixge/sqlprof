@@ -1,0 +1,426 @@
+package db
+
+import (
+	"context"
+	"crypto/sha256"
+	"database/sql"
+	"database/sql/driver"
+	"embed"
+	"encoding/binary"
+	"errors"
+	"fmt"
+	"io"
+	"strings"
+
+	"github.com/marcboeker/go-duckdb"
+	"golang.org/x/exp/trace"
+)
+
+//go:embed schema.sql
+var fs embed.FS
+
+// ProfileKind is a kind of profile that can be converted into a database.
+type ProfileKind string
+
+const (
+	// ProfileKindTrace represents a runtime trace.
+	ProfileKindTrace ProfileKind = "trace"
+	// ProfileKindPPROF represents a pprof profile.
+	ProfileKindPPROF ProfileKind = "pprof"
+)
+
+// Profile is a profile that can be converted into a database.
+type Profile struct {
+	Kind ProfileKind
+	Data io.Reader
+}
+
+// Create creates a new duckdb at the given path and loads the profile into it.
+func Create(duckPath string, p Profile) error {
+	switch p.Kind {
+	case ProfileKindTrace:
+		return createTrace(duckPath, p.Data)
+	case ProfileKindPPROF:
+		return fmt.Errorf("not implemented: kind=%q", p.Kind)
+	default:
+		return fmt.Errorf("invalid profile: kind=%q", p.Kind)
+	}
+}
+
+func createTrace(duckPath string, r io.Reader) error {
+	connector, err := duckdb.NewConnector(duckPath, nil)
+	if err != nil {
+		return err
+	}
+	defer connector.Close()
+
+	db := sql.OpenDB(connector)
+	defer db.Close()
+	b, err := fs.ReadFile("schema.sql")
+	if err != nil {
+		return err
+	} else if _, err := db.Exec(string(b)); err != nil {
+		return err
+	}
+	ddb := &duckDB{sql: db, duck: connector}
+	if err := ddb.LoadTrace(context.Background(), r); err != nil {
+		return err
+	}
+	return ddb.Close()
+}
+
+type duckDB struct {
+	sql  *sql.DB
+	duck *duckdb.Connector
+}
+
+func (d *duckDB) Close() error {
+	return errors.Join(d.duck.Close(), d.sql.Close())
+}
+
+// DB returns the underlying sql.DB.
+func (db *duckDB) DB() *sql.DB {
+	return db.sql
+}
+
+// LoadTrace loads a runtime/trace from r into the database.
+func (db *duckDB) LoadTrace(ctx context.Context, r io.Reader) (rErr error) {
+	tr, err := trace.NewReader(r)
+	if err != nil {
+		return err
+	}
+
+	l, err := db.loader(ctx)
+	if err != nil {
+		return err
+	}
+	defer l.Close()
+
+	var traceStart trace.Time
+	gIdx := map[trace.GoID]*gState{}
+	pIdx := map[trace.ProcID]*pState{}
+	for {
+		ev, err := tr.ReadEvent()
+		if err == io.EOF {
+			break
+		} else if err != nil {
+			return err
+		}
+
+		if traceStart == 0 {
+			traceStart = ev.Time()
+			macroSQL := fmt.Sprintf(`create macro abs_time_ns(rel_time_ns) AS (
+			  SELECT rel_time_ns + %v 
+);`, traceStart)
+			if _, err := db.sql.ExecContext(ctx, macroSQL); err != nil {
+				return err
+			}
+		}
+
+		var srcStackID uint64
+		if srcStackID, err = l.Stack(ev.Stack()); err != nil {
+			return err
+		}
+
+		switch ev.Kind() {
+		case trace.EventStateTransition:
+			st := ev.StateTransition()
+			var stackID uint64
+			if stackID, err = l.Stack(st.Stack); err != nil {
+				return err
+			}
+			if srcStackID == stackID {
+				srcStackID = 0
+			}
+
+			switch st.Resource.Kind {
+			case trace.ResourceProc:
+				from, to := st.Proc()
+				procID := st.Resource.Proc()
+				p, ok := pIdx[procID]
+				dt := trace.Time(0)
+				if !ok {
+					p = &pState{}
+					pIdx[procID] = p
+				} else {
+					dt = ev.Time() - p.time
+				}
+				transition := &pTransition{
+					StackID:    srcStackID,
+					EndTimeNS:  uint64(ev.Time() - traceStart),
+					DurationNS: uint64(dt),
+					G:          ev.Goroutine(),
+					P:          procID,
+					M:          ev.Thread(),
+					FromState:  strings.ToLower(from.String()),
+					ToState:    strings.ToLower(to.String()),
+					Reason:     st.Reason,
+				}
+				if err := l.PTransition(transition); err != nil {
+					return err
+				}
+				p.time = ev.Time()
+
+			case trace.ResourceGoroutine:
+				from, to := st.Goroutine()
+				goID := st.Resource.Goroutine()
+				g, ok := gIdx[goID]
+				dt := trace.Time(0)
+				if !ok {
+					g = &gState{}
+					gIdx[goID] = g
+				} else {
+					dt = ev.Time() - g.time
+				}
+				transition := &gTransition{
+					G:          goID,
+					EndTimeNS:  uint64(ev.Time() - traceStart),
+					DurationNS: uint64(dt),
+					SrcG:       ev.Goroutine(),
+					SrcP:       ev.Proc(),
+					SrcM:       ev.Thread(),
+					FromState:  strings.ToLower(from.String()),
+					ToState:    strings.ToLower(to.String()),
+					Reason:     st.Reason,
+					StackID:    stackID,
+					SrcStackID: srcStackID,
+				}
+				if err := l.GTransition(transition); err != nil {
+					return err
+				}
+				g.time = ev.Time()
+
+			}
+		}
+
+	}
+
+	if err := l.Close(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func nullableResource[T trace.ProcID | trace.GoID | trace.ThreadID](v T) any {
+	// TODO: ideally we'd check against trace.NoGoroutine and similar consts
+	// here.
+	if v == -1 {
+		return nil
+	}
+	return int64(v)
+}
+
+func nullableStackID(v uint64) any {
+	if v == -0 {
+		return nil
+	}
+	return v
+}
+
+type gState struct {
+	time trace.Time
+}
+
+type pState struct {
+	time trace.Time
+}
+
+func (db *duckDB) loader(ctx context.Context) (*loader, error) {
+	l := &loader{
+		funcIdx:   map[functionKey]*functionRow{},
+		frameIdx:  map[frameKey]*frameRow{},
+		stackIdx:  map[stackKey]*stack{},
+		appenders: map[string]*duckdb.Appender{},
+	}
+	conn, err := db.duck.Connect(ctx)
+	if err != nil {
+		return nil, err
+	}
+	l.conn = conn
+	for _, table := range []string{"functions", "frames", "stack_frames", "raw_g_transitions", "p_transitions"} {
+		appender, err := duckdb.NewAppenderFromConn(conn, "", table)
+		if err != nil {
+			return nil, err
+		}
+		l.appenders[table] = appender
+	}
+	return l, nil
+}
+
+type loader struct {
+	conn      driver.Conn
+	funcIdx   map[functionKey]*functionRow
+	frameIdx  map[frameKey]*frameRow
+	stackIdx  map[stackKey]*stack
+	appenders map[string]*duckdb.Appender
+}
+
+// GTransition appends an transition to the database.
+func (l *loader) GTransition(e *gTransition) error {
+	return l.appenders["raw_g_transitions"].AppendRow(
+		nullableResource(e.G),
+		e.FromState,
+		e.ToState,
+		e.Reason,
+		e.DurationNS,
+		e.EndTimeNS,
+		nullableResource(e.SrcG),
+		nullableResource(e.SrcM),
+		nullableResource(e.SrcP),
+		nullableStackID(e.StackID),
+		nullableStackID(e.SrcStackID),
+	)
+}
+
+func (l *loader) PTransition(e *pTransition) error {
+	return l.appenders["p_transitions"].AppendRow(
+		nullableResource(e.P),
+		e.FromState,
+		e.ToState,
+		e.DurationNS,
+		e.EndTimeNS,
+		nullableResource(e.G),
+		nullableResource(e.M),
+	)
+}
+
+func (l *loader) Stack(s trace.Stack) (stackID uint64, err error) {
+	if s == trace.NoStack {
+		return 0, nil
+	}
+
+	var frames []*frameRow
+	s.Frames(func(f trace.StackFrame) bool {
+		fnKey := functionKey{Name: f.Func, File: f.File}
+		fn, ok := l.funcIdx[fnKey]
+		if !ok {
+			fn = &functionRow{FunctionID: uint64(len(l.funcIdx) + 1), functionKey: fnKey}
+			l.funcIdx[fnKey] = fn
+			if err = l.appenders["functions"].AppendRow(
+				fn.FunctionID,
+				fn.Name,
+				fn.File,
+			); err != nil {
+				return false
+			}
+		}
+		frameKey := frameKey{Address: f.PC, Function: fn, Line: f.Line}
+		frame, ok := l.frameIdx[frameKey]
+		if !ok {
+			frame = &frameRow{FrameID: uint64(len(l.frameIdx) + 1), frameKey: frameKey}
+			l.frameIdx[frameKey] = frame
+			if err = l.appenders["frames"].AppendRow(
+				frame.FrameID,
+				frame.Address,
+				frame.Function.FunctionID,
+				frame.Line,
+			); err != nil {
+				return false
+			}
+		}
+		frames = append(frames, frame)
+		return true
+	})
+	if err != nil {
+		return 0, err
+	}
+
+	if len(frames) == 0 {
+		panic("no frames, but not NoStack")
+	}
+	stackKey := newStackKey(frames)
+	stk, ok := l.stackIdx[stackKey]
+	if !ok {
+		stk = &stack{StackID: uint64(len(l.stackIdx) + 1), Frames: frames}
+		l.stackIdx[stackKey] = stk
+		for i, frame := range stk.Frames {
+			if err := l.appenders["stack_frames"].AppendRow(
+				stk.StackID,
+				frame.FrameID,
+				i,
+			); err != nil {
+				return 0, err
+			}
+		}
+	}
+	return stk.StackID, nil
+}
+
+func (l *loader) Close() error {
+	var err error
+	for _, a := range l.appenders {
+		err = errors.Join(err, a.Close())
+	}
+	return errors.Join(l.conn.Close(), err)
+}
+
+type frameRow struct {
+	FrameID uint64
+	frameKey
+}
+
+type frameKey struct {
+	Address  uint64
+	Function *functionRow
+	Line     uint64
+}
+
+type functionRow struct {
+	FunctionID uint64
+	functionKey
+}
+
+type functionKey struct {
+	Name string
+	File string
+}
+
+type stack struct {
+	StackID uint64
+	Frames  []*frameRow
+}
+
+type stackKey struct {
+	Lo uint64
+	Hi uint64
+}
+
+type gTransition struct {
+	G          trace.GoID
+	EndTimeNS  uint64
+	DurationNS uint64
+	SrcG       trace.GoID
+	SrcP       trace.ProcID
+	SrcM       trace.ThreadID
+	FromState  string
+	ToState    string
+	Reason     string
+	SrcStackID uint64
+	StackID    uint64
+}
+
+type pTransition struct {
+	EndTimeNS  uint64
+	DurationNS uint64
+	G          trace.GoID
+	P          trace.ProcID
+	M          trace.ThreadID
+	FromState  string
+	ToState    string
+	Reason     string
+	StackID    uint64
+}
+
+// newStackKey returns a new StackKey for the given frames. The key is the
+// sha256 hash of the concatenated frame ids.
+func newStackKey(frames []*frameRow) stackKey {
+	h := sha256.New()
+	for _, frame := range frames {
+		binary.Write(h, binary.LittleEndian, int64(frame.FrameID))
+	}
+	return stackKey{
+		Lo: binary.LittleEndian.Uint64(h.Sum(nil)[:8]),
+		Hi: binary.LittleEndian.Uint64(h.Sum(nil)[8:]),
+	}
+}

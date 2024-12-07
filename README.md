@@ -7,10 +7,10 @@ sqlprof is a tool for exploring profiling data using duckdb SQL queries.
 The examples marked as TODO have not been implemented yet.
 
 ``` bash
-# Explore a runtime trace in an interactive duckdb session (TODO)
+# Explore a runtime trace in an interactive duckdb session
 $ sqlprof go.trace
 
-# Show the number of goroutines included in a runtime trace (TODO)
+# Show the number of goroutines included in a runtime trace
 $ sqlprof go.trace 'SELECT count(*) FROM goroutines'
 
 # Convert a runtime trace into a permanent duckdb file (TODO)
