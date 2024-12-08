@@ -2,8 +2,6 @@ package main
 
 import (
 	"crypto/sha256"
-	"database/sql"
-	"encoding/csv"
 	"errors"
 	"flag"
 	"fmt"
@@ -15,7 +13,7 @@ import (
 	"runtime/trace"
 
 	"github.com/felixge/sqlprof/db"
-	"github.com/olekukonko/tablewriter"
+	"github.com/felixge/sqlprof/db/dbutil"
 )
 
 func main() {
@@ -104,18 +102,17 @@ func runQuery(format string, paths []string, query string) (err error) {
 	// Close the db and remove its file after the interactive session is done.
 	defer func() { err = errors.Join(err, db.Close(), os.Remove(db.Path())) }()
 
-	// Execute the query.
-	var result *queryResult
-	if result, err = queryRows(db.DB, query); err != nil {
-		return fmt.Errorf("failed to execute query: %w", err)
+	rows, err := db.Query(query)
+	if err != nil {
+		return fmt.Errorf("failed to query: %w", err)
 	}
 
 	// Print the query result based on the format.
 	switch format {
 	case "csv":
-		printQueryResultCSV(result)
+		dbutil.WriteCSV(os.Stdout, rows)
 	case "table":
-		printQueryResultTable(result)
+		dbutil.WriteASCIITable(os.Stdout, rows)
 	default:
 		return fmt.Errorf("unsupported format: %s", format)
 	}
@@ -223,115 +220,5 @@ func startMemProfile(path string) func() error {
 		// Update the memory statistics and write the heap profile.
 		runtime.GC()
 		return errors.Join(pprof.WriteHeapProfile(f), f.Close())
-	}
-}
-
-type queryResult struct {
-	Columns []column
-	Values  [][]any
-}
-type column struct {
-	Name string
-	Type string
-}
-
-func queryRows(db *sql.DB, query string, args ...interface{}) (*queryResult, error) {
-	var result queryResult
-	// Prepare the query statement
-	rows, err := db.Query(query, args...)
-	if err != nil {
-		return nil, fmt.Errorf("query execution error: %w", err)
-	}
-	defer rows.Close()
-
-	// Get column names
-	columns, err := rows.Columns()
-	if err != nil {
-		return nil, fmt.Errorf("unable to get columns: %w", err)
-	}
-
-	// Get column types
-	columnTypes, err := rows.ColumnTypes()
-	if err != nil {
-		return nil, fmt.Errorf("unable to get column types: %w", err)
-	}
-
-	// Create a slice to hold column descriptions
-	for i := range columns {
-		result.Columns = append(result.Columns, column{
-			Name: columns[i],
-			Type: columnTypes[i].DatabaseTypeName(),
-		})
-	}
-
-	// Iterate through rows
-	for rows.Next() {
-		// Create a slice to hold column values
-		values := make([]any, len(columns))
-		valuePtrs := make([]any, len(columns))
-
-		for i := range values {
-			valuePtrs[i] = &values[i]
-		}
-
-		// Scan row into value pointers
-		if err := rows.Scan(valuePtrs...); err != nil {
-			return nil, fmt.Errorf("row scan error: %w", err)
-		}
-
-		// Append the row to the result
-		result.Values = append(result.Values, values)
-	}
-
-	// Check for any errors encountered during iteration
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("rows iteration error: %w", err)
-	}
-
-	return &result, nil
-}
-
-func printQueryResultTable(result *queryResult) {
-	table := tablewriter.NewWriter(os.Stdout)
-
-	// Set the table header
-	var header []string
-	for _, column := range result.Columns {
-		header = append(header, column.Name)
-	}
-	table.SetHeader(header)
-	table.SetAutoFormatHeaders(false)
-
-	// Add the rows
-	for _, row := range result.Values {
-		rowS := make([]string, len(row))
-		for i, value := range row {
-			rowS[i] = fmt.Sprintf("%v", value)
-		}
-		table.Append(rowS)
-	}
-
-	// Render the table
-	table.Render()
-}
-
-func printQueryResultCSV(result *queryResult) {
-	writer := csv.NewWriter(os.Stdout)
-	defer writer.Flush()
-
-	// Write the header
-	var header []string
-	for _, column := range result.Columns {
-		header = append(header, column.Name)
-	}
-	writer.Write(header)
-
-	// Write the rows
-	for _, row := range result.Values {
-		rowS := make([]string, len(row))
-		for i, value := range row {
-			rowS[i] = fmt.Sprintf("%v", value)
-		}
-		writer.Write(rowS)
 	}
 }
