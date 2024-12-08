@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"runtime/pprof"
 	"runtime/trace"
 
@@ -19,10 +20,15 @@ import (
 )
 
 func main() {
+	os.Exit(sqlprof())
+}
+
+func sqlprof() int {
 	if err := run(); err != nil {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
-		os.Exit(1)
+		return 1
 	}
+	return 0
 }
 
 func run() (err error) {
@@ -30,6 +36,7 @@ func run() (err error) {
 	var (
 		cpuProfileF = flag.String("cpuprofile", "", "write cpu profile to file")
 		traceF      = flag.String("trace", "", "write trace to file")
+		memProfileF = flag.String("memprofile", "", "write memory profile to file")
 		formatF     = flag.String("format", "table", "output format (table, csv)")
 	)
 	flag.Parse()
@@ -47,6 +54,10 @@ func run() (err error) {
 		return fmt.Errorf("failed to start trace: %w", err)
 	}
 	defer func() { err = errors.Join(err, stopTrace()) }()
+
+	// Start the memory profile if requested.
+	stopMemProfile := startMemProfile(*memProfileF)
+	defer func() { err = errors.Join(err, stopMemProfile()) }()
 
 	// Execute the requested command.
 	switch args := flag.Args(); len(args) {
@@ -204,6 +215,25 @@ func startTrace(path string) (stop func() error, err error) {
 		return f.Close()
 	}
 	return
+}
+
+func startMemProfile(path string) func() error {
+	return func() error {
+		// Do nothing and return early if no path is provided.
+		if path == "" {
+			return nil
+		}
+
+		// Create the file to write the profile to.
+		f, err := os.Create(path)
+		if err != nil {
+			return err
+		}
+
+		// Update the memory statistics and write the heap profile.
+		runtime.GC()
+		return errors.Join(pprof.WriteHeapProfile(f), f.Close())
+	}
 }
 
 type queryResult struct {

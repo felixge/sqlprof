@@ -1,0 +1,38 @@
+# At least one argument is required
+! exec sqlprof
+stderr 'missing argument 1'
+
+# First argument needs to be a valid profile
+! exec sqlprof does-not-exist
+stderr 'failed to load profile'
+
+# Pass SQL query on command line
+exec sqlprof testdata/testprog/go1.23.3.trace 'SELECT count(*) FROM goroutines'
+cmp stdout non-interactive.stdout.txt
+
+# Pass SQL query via stdin (interactive mode)
+stdin interactive.stdin.txt
+exec sqlprof testdata/testprog/go1.23.3.trace
+cmp stdout interactive.stdout.txt
+
+# Output pprof and runtime trace data
+exec sqlprof -trace go.trace -memprofile mem.pprof -cpuprofile cpu.pprof testdata/testprog/go1.23.3.trace 'SELECT count(*) FROM goroutines'
+exec go tool pprof cpu.pprof
+exec go tool pprof mem.pprof
+exists go.trace
+
+-- non-interactive.stdout.txt --
++--------------+
+| count_star() |
++--------------+
+|            9 |
++--------------+
+-- interactive.stdin.txt --
+SELECT count(*) FROM goroutines
+-- interactive.stdout.txt --
+┌──────────────┐
+│ count_star() │
+│    int64     │
+├──────────────┤
+│            9 │
+└──────────────┘
