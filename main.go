@@ -3,6 +3,7 @@ package main
 import (
 	"crypto/sha256"
 	"database/sql"
+	"encoding/csv"
 	"errors"
 	"flag"
 	"fmt"
@@ -29,6 +30,7 @@ func run() (err error) {
 	var (
 		cpuProfileF = flag.String("cpuprofile", "", "write cpu profile to file")
 		traceF      = flag.String("trace", "", "write trace to file")
+		formatF     = flag.String("format", "table", "output format (table, csv)")
 	)
 	flag.Parse()
 
@@ -53,7 +55,7 @@ func run() (err error) {
 	case 1:
 		return runInteractive(flag.Arg(0))
 	default:
-		return runQuery(args[0:len(args)-1], args[len(args)-1])
+		return runQuery(*formatF, args[0:len(args)-1], args[len(args)-1])
 	}
 }
 
@@ -76,7 +78,7 @@ func runInteractive(profilePath string) (err error) {
 	return cmd.Run()
 }
 
-func runQuery(paths []string, query string) (err error) {
+func runQuery(format string, paths []string, query string) (err error) {
 	// TODO: Support multiple paths.
 	if len(paths) > 1 {
 		return fmt.Errorf("not implemented: multiple paths=%v query=%q", paths, query)
@@ -108,8 +110,15 @@ func runQuery(paths []string, query string) (err error) {
 		return fmt.Errorf("failed to execute query: %w", err)
 	}
 
-	// Print the query result as a table.
-	printQueryResultTable(result)
+	// Print the query result based on the format.
+	switch format {
+	case "csv":
+		printQueryResultCSV(result)
+	case "table":
+		printQueryResultTable(result)
+	default:
+		return fmt.Errorf("unsupported format: %s", format)
+	}
 	return nil
 }
 
@@ -263,12 +272,17 @@ func queryRows(db *sql.DB, query string, args ...interface{}) (*queryResult, err
 }
 
 func printQueryResultTable(result *queryResult) {
+	table := tablewriter.NewWriter(os.Stdout)
+
+	// Set the table header
 	var header []string
 	for _, column := range result.Columns {
 		header = append(header, column.Name)
 	}
-	table := tablewriter.NewWriter(os.Stdout)
 	table.SetHeader(header)
+	table.SetAutoFormatHeaders(false)
+
+	// Add the rows
 	for _, row := range result.Values {
 		rowS := make([]string, len(row))
 		for i, value := range row {
@@ -276,5 +290,28 @@ func printQueryResultTable(result *queryResult) {
 		}
 		table.Append(rowS)
 	}
-	table.Render() // Send output
+
+	// Render the table
+	table.Render()
+}
+
+func printQueryResultCSV(result *queryResult) {
+	writer := csv.NewWriter(os.Stdout)
+	defer writer.Flush()
+
+	// Write the header
+	var header []string
+	for _, column := range result.Columns {
+		header = append(header, column.Name)
+	}
+	writer.Write(header)
+
+	// Write the rows
+	for _, row := range result.Values {
+		rowS := make([]string, len(row))
+		for i, value := range row {
+			rowS[i] = fmt.Sprintf("%v", value)
+		}
+		writer.Write(rowS)
+	}
 }
