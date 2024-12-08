@@ -15,7 +15,6 @@ import (
 	"runtime/trace"
 
 	"github.com/felixge/sqlprof/db"
-	"github.com/marcboeker/go-duckdb"
 	"github.com/olekukonko/tablewriter"
 )
 
@@ -72,16 +71,18 @@ func run() (err error) {
 
 func runInteractive(profilePath string) (err error) {
 	// Load the profile into a temporary duckdb database.
-	var duckPath string
-	if duckPath, err = loadProfile(profilePath); err != nil {
+	var db *db.DB
+	if db, err = loadProfile(profilePath); err != nil {
 		return fmt.Errorf("failed to load profile: %w", err)
+		// Close the db. If we don't, we get a lock conflict when running the CLI.
+	} else if err = db.Close(); err != nil {
+		return fmt.Errorf("failed to close db: %w", err)
 	}
-
-	// Remove the duckdb file after the interactive session is done.
-	defer func() { err = errors.Join(err, os.Remove(duckPath)) }()
+	// Remove db file after the interactive session is done.
+	defer func() { err = errors.Join(err, os.Remove(db.Path())) }()
 
 	// Run the interactive duckdb CLI with the temporary database.
-	cmd := exec.Command("duckdb", duckPath)
+	cmd := exec.Command("duckdb", db.Path())
 	cmd.Env = os.Environ()
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
@@ -96,28 +97,16 @@ func runQuery(format string, paths []string, query string) (err error) {
 	}
 
 	// Load the profile into a temporary duckdb database.
-	var duckPath string
-	if duckPath, err = loadProfile(paths[0]); err != nil {
+	var db *db.DB
+	if db, err = loadProfile(paths[0]); err != nil {
 		return fmt.Errorf("failed to load profile: %w", err)
 	}
-
-	// Remove the duckdb file after the interactive session is done.
-	defer func() { err = errors.Join(err, os.Remove(duckPath)) }()
-
-	// Connect to the duckdb database.
-	var connector *duckdb.Connector
-	if connector, err = duckdb.NewConnector(duckPath, nil); err != nil {
-		return fmt.Errorf("failed to create duckdb connector: %w", err)
-	}
-	defer func() { err = errors.Join(err, connector.Close()) }()
-
-	// Open the database connection.
-	db := sql.OpenDB(connector)
-	defer func() { err = errors.Join(err, db.Close()) }()
+	// Close the db and remove its file after the interactive session is done.
+	defer func() { err = errors.Join(err, db.Close(), os.Remove(db.Path())) }()
 
 	// Execute the query.
 	var result *queryResult
-	if result, err = queryRows(db, query); err != nil {
+	if result, err = queryRows(db.DB, query); err != nil {
 		return fmt.Errorf("failed to execute query: %w", err)
 	}
 
@@ -133,11 +122,11 @@ func runQuery(format string, paths []string, query string) (err error) {
 	return nil
 }
 
-func loadProfile(profilePath string) (string, error) {
+func loadProfile(profilePath string) (*db.DB, error) {
 	// Open the profile file.
 	profileReader, err := os.Open(profilePath)
 	if err != nil {
-		return "", fmt.Errorf("failed to open profile: path=%q err=%w", profilePath, err)
+		return nil, fmt.Errorf("failed to open profile: path=%q err=%w", profilePath, err)
 	}
 
 	// Determine the location for creating the temporary duckdb database.
@@ -151,10 +140,11 @@ func loadProfile(profilePath string) (string, error) {
 		Kind: db.ProfileKindTrace, // TODO: Support pprof profiles.
 		Data: profileReader,
 	}
-	if err := db.Create(duckPath, profile); err != nil {
-		return "", fmt.Errorf("failed to create duckdb: path=%q err=%w", duckPath, err)
+	db, err := db.Create(duckPath, profile)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create duckdb: path=%q err=%w", duckPath, err)
 	}
-	return duckPath, nil
+	return db, nil
 }
 
 // duckTempPath returns a temporary path for a duckdb database file. The same

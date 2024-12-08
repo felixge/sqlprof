@@ -36,55 +36,58 @@ type Profile struct {
 }
 
 // Create creates a new duckdb at the given path and loads the profile into it.
-func Create(duckPath string, p Profile) error {
+func Create(duckPath string, p Profile) (*DB, error) {
 	switch p.Kind {
 	case ProfileKindTrace:
 		return createTrace(duckPath, p.Data)
 	case ProfileKindPPROF:
-		return fmt.Errorf("not implemented: kind=%q", p.Kind)
+		return nil, fmt.Errorf("not implemented: kind=%q", p.Kind)
 	default:
-		return fmt.Errorf("invalid profile: kind=%q", p.Kind)
+		return nil, fmt.Errorf("invalid profile: kind=%q", p.Kind)
 	}
 }
 
-func createTrace(duckPath string, r io.Reader) error {
+func createTrace(duckPath string, r io.Reader) (*DB, error) {
 	connector, err := duckdb.NewConnector(duckPath, nil)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	defer connector.Close()
 
-	db := sql.OpenDB(connector)
-	defer db.Close()
+	db := &DB{
+		DB:   sql.OpenDB(connector),
+		path: duckPath,
+		duck: connector,
+	}
 	b, err := fs.ReadFile("schema.sql")
 	if err != nil {
-		return err
+		return nil, errors.Join(err, db.Close())
 	} else if _, err := db.Exec(string(b)); err != nil {
-		return err
+		return nil, errors.Join(err, db.Close())
 	}
-	ddb := &duckDB{sql: db, duck: connector}
-	if err := ddb.LoadTrace(context.Background(), r); err != nil {
-		return err
+	if err := db.loadTrace(context.Background(), r); err != nil {
+		return nil, errors.Join(err, db.Close())
 	}
-	return ddb.Close()
+	return db, nil
 }
 
-type duckDB struct {
-	sql  *sql.DB
+type DB struct {
+	*sql.DB
+	path string
 	duck *duckdb.Connector
 }
 
-func (d *duckDB) Close() error {
-	return errors.Join(d.duck.Close(), d.sql.Close())
+// Close closes the database.
+func (d *DB) Close() error {
+	return errors.Join(d.duck.Close(), d.DB.Close())
 }
 
-// DB returns the underlying sql.DB.
-func (db *duckDB) DB() *sql.DB {
-	return db.sql
+// Path returns the path to the database.
+func (db *DB) Path() string {
+	return db.path
 }
 
-// LoadTrace loads a runtime/trace from r into the database.
-func (db *duckDB) LoadTrace(ctx context.Context, r io.Reader) (rErr error) {
+// loadTrace loads a runtime/trace from r into the database.
+func (db *DB) loadTrace(ctx context.Context, r io.Reader) (rErr error) {
 	tr, err := trace.NewReader(r)
 	if err != nil {
 		return err
@@ -112,7 +115,7 @@ func (db *duckDB) LoadTrace(ctx context.Context, r io.Reader) (rErr error) {
 			macroSQL := fmt.Sprintf(`create macro abs_time_ns(rel_time_ns) AS (
 			  SELECT rel_time_ns + %v 
 );`, traceStart)
-			if _, err := db.sql.ExecContext(ctx, macroSQL); err != nil {
+			if _, err := db.ExecContext(ctx, macroSQL); err != nil {
 				return err
 			}
 		}
@@ -226,7 +229,7 @@ type pState struct {
 	time trace.Time
 }
 
-func (db *duckDB) loader(ctx context.Context) (*loader, error) {
+func (db *DB) loader(ctx context.Context) (*loader, error) {
 	l := &loader{
 		funcIdx:   map[functionKey]*functionRow{},
 		frameIdx:  map[frameKey]*frameRow{},
