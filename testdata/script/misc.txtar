@@ -12,4 +12,5 @@ exec go tool pprof cpu.pprof
 stderr 'Type: cpu'
 exec go tool pprof mem.pprof
 stderr 'Type: inuse_space'
-exists go.trace
+exec sqlprof go.trace 'SELECT * FROM goroutines WHERE name LIKE ''main.%'''
+stdout main\.main
