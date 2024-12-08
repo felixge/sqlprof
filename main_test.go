@@ -11,9 +11,7 @@ import (
 var updateFiles = os.Getenv("UPDATE") != ""
 
 func TestMain(m *testing.M) {
-	os.Exit(testscript.RunMain(m, map[string]func() int{
-		"sqlprof": sqlprof,
-	}))
+	os.Exit(testscript.RunMain(m, map[string]func() int{"sqlprof": sqlprof}))
 }
 
 func TestIntegration(t *testing.T) {
