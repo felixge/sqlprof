@@ -8,12 +8,10 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
-	"runtime/pprof"
-	"runtime/trace"
 
 	"github.com/felixge/sqlprof/db"
 	"github.com/felixge/sqlprof/db/dbutil"
+	"github.com/felixge/sqlprof/internal/profile"
 )
 
 func main() {
@@ -40,20 +38,20 @@ func run() (err error) {
 
 	// Start the CPU profile if requested.
 	var stopCPUProfile func() error
-	if stopCPUProfile, err = startCPUProfile(*cpuProfileF); err != nil {
+	if stopCPUProfile, err = profile.StartCPUProfile(*cpuProfileF); err != nil {
 		return fmt.Errorf("failed to start CPU profile: %w", err)
 	}
 	defer func() { err = errors.Join(err, stopCPUProfile()) }()
 
 	// Start the trace if requested.
 	var stopTrace func() error
-	if stopTrace, err = startTrace(*traceF); err != nil {
+	if stopTrace, err = profile.StartTrace(*traceF); err != nil {
 		return fmt.Errorf("failed to start trace: %w", err)
 	}
 	defer func() { err = errors.Join(err, stopTrace()) }()
 
 	// Start the memory profile if requested.
-	stopMemProfile := startMemProfile(*memProfileF)
+	stopMemProfile := profile.StartMemProfile(*memProfileF)
 	defer func() { err = errors.Join(err, stopMemProfile()) }()
 
 	// Execute the requested command.
@@ -150,75 +148,4 @@ func duckTempPath(path string) string {
 	dir := os.TempDir()
 	name := fmt.Sprintf("sqlprof_%x.duckdb", sha256.Sum256([]byte(path)))
 	return filepath.Join(dir, name)
-}
-
-func startCPUProfile(path string) (stop func() error, err error) {
-	// Default to a no-op stop function and return early if no path is provided.
-	stop = func() error { return nil }
-	if path == "" {
-		return
-	}
-
-	// Create the file to write the profile to.
-	var f *os.File
-	if f, err = os.Create(path); err != nil {
-		return
-	}
-
-	// Start the CPU profile or return the error and close the file.
-	if err = pprof.StartCPUProfile(f); err != nil {
-		return nil, errors.Join(err, f.Close())
-	}
-
-	// Return a function that stops the CPU profile and closes the file.
-	stop = func() error {
-		pprof.StopCPUProfile()
-		return f.Close()
-	}
-	return
-}
-
-func startTrace(path string) (stop func() error, err error) {
-	// Default to a no-op stop function and return early if no path is provided.
-	stop = func() error { return nil }
-	if path == "" {
-		return
-	}
-
-	// Create the file to write the trace to.
-	var f *os.File
-	if f, err = os.Create(path); err != nil {
-		return
-	}
-
-	// Start the trace or return the error and close the file.
-	if err = trace.Start(f); err != nil {
-		return nil, errors.Join(err, f.Close())
-	}
-
-	// Return a function that stops the trace and closes the file.
-	stop = func() error {
-		trace.Stop()
-		return f.Close()
-	}
-	return
-}
-
-func startMemProfile(path string) func() error {
-	return func() error {
-		// Do nothing and return early if no path is provided.
-		if path == "" {
-			return nil
-		}
-
-		// Create the file to write the profile to.
-		f, err := os.Create(path)
-		if err != nil {
-			return err
-		}
-
-		// Update the memory statistics and write the heap profile.
-		runtime.GC()
-		return errors.Join(pprof.WriteHeapProfile(f), f.Close())
-	}
 }
