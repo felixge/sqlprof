@@ -1,25 +1,15 @@
-# At least one argument is required
-! exec sqlprof
-stderr 'missing argument 1'
-
-# First argument needs to be a valid profile
-! exec sqlprof does-not-exist
-stderr 'failed to load profile'
-
 # Pass SQL query on command line
 exec sqlprof testdata/testprog/go1.23.3.trace 'SELECT count(*) FROM goroutines'
 cmp stdout non-interactive.stdout.txt
+
+# CSV Output format
+exec sqlprof -format csv testdata/testprog/go1.23.3.trace 'SELECT * FROM goroutines ORDER BY g LIMIT 3'
+cmp stdout non-interactive-csv.stdout.txt
 
 # Pass SQL query via stdin (interactive mode)
 stdin interactive.stdin.txt
 exec sqlprof testdata/testprog/go1.23.3.trace
 cmp stdout interactive.stdout.txt
-
-# Output pprof and runtime trace data
-exec sqlprof -trace go.trace -memprofile mem.pprof -cpuprofile cpu.pprof testdata/testprog/go1.23.3.trace 'SELECT count(*) FROM goroutines'
-exec go tool pprof cpu.pprof
-exec go tool pprof mem.pprof
-exists go.trace
 
 -- non-interactive.stdout.txt --
 +--------------+
@@ -27,6 +17,11 @@ exists go.trace
 +--------------+
 |            9 |
 +--------------+
+-- non-interactive-csv.stdout.txt --
+g,name,is_system_goroutine,running_ns,runnable_ns,syscall_ns,waiting_ns,total_ns
+1,main.main,false,4948245498,2555846,0,5049519808,10000321152
+2,runtime.forcegchelper,true,0,0,0,8999809024,8999809024
+3,runtime.bgsweep,true,0,0,0,8999809280,8999809280
 -- interactive.stdin.txt --
 SELECT count(*) FROM goroutines
 -- interactive.stdout.txt --

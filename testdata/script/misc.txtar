@@ -1,0 +1,13 @@
+# At least one argument is required
+! exec sqlprof
+stderr 'missing argument 1'
+
+# First argument needs to be a valid profile
+! exec sqlprof does-not-exist
+stderr 'failed to load profile'
+
+# Output pprof and runtime trace data
+exec sqlprof -trace go.trace -memprofile mem.pprof -cpuprofile cpu.pprof testdata/testprog/go1.23.3.trace 'SELECT count(*) FROM goroutines'
+exec go tool pprof cpu.pprof
+exec go tool pprof mem.pprof
+exists go.trace
