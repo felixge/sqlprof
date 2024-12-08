@@ -76,11 +76,6 @@ type DB struct {
 	duck *duckdb.Connector
 }
 
-// Close closes the database.
-func (d *DB) Close() error {
-	return errors.Join(d.duck.Close(), d.DB.Close())
-}
-
 // Path returns the path to the database.
 func (db *DB) Path() string {
 	return db.path
