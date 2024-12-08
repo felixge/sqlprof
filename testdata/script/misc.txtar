@@ -9,5 +9,7 @@ stderr 'failed to load profile'
 # Output pprof and runtime trace data
 exec sqlprof -trace go.trace -memprofile mem.pprof -cpuprofile cpu.pprof testdata/testprog/go1.23.3.trace 'SELECT count(*) FROM goroutines'
 exec go tool pprof cpu.pprof
+stderr 'Type: cpu'
 exec go tool pprof mem.pprof
+stderr 'Type: inuse_space'
 exists go.trace
