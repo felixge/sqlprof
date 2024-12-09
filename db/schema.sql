@@ -108,4 +108,4 @@ SELECT
     count(*) AS count
 FROM goroutines
 GROUP BY 1
-ORDER BY running_ns DESC;
+ORDER BY running_ns DESC, name;
