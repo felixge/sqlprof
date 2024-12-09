@@ -1,4 +1,0 @@
--- events-consecutive.sql --
-SELECT * FROM foo;
-
--- testdata/testprog/go1.23.3.trace-events-consecutive.sql --

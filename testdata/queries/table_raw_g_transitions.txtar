@@ -1,0 +1,21 @@
+-- sample.sql --
+select * from raw_g_transitions order by end_time_ns asc limit 3;
+
+-- sample.txt --
+../testdata/testprog/go1.23.3.trace:
++---+--------------+----------+--------+-------------+-------------+-------+------------+-------+----------+--------------+
+| g |  from_state  | to_state | reason | duration_ns | end_time_ns | src_g |   src_m    | src_p | stack_id | src_stack_id |
++---+--------------+----------+--------+-------------+-------------+-------+------------+-------+----------+--------------+
+| 1 | undetermined | running  |        |           0 |         128 | <nil> | 8674447168 |     0 | <nil>    | <nil>        |
+| 6 | notexist     | runnable |        |           0 |       15104 |     1 | 8674447168 |     0 |        5 |            4 |
+| 7 | notexist     | runnable |        |           0 |       15680 |     1 | 8674447168 |     0 |        7 |            6 |
++---+--------------+----------+--------+-------------+-------------+-------+------------+-------+----------+--------------+
+-- sum.sql --
+select sum(duration_ns), sum(end_time_ns) from raw_g_transitions;
+-- sum.txt --
+../testdata/testprog/go1.23.3.trace:
++------------------+------------------+
+| sum(duration_ns) | sum(end_time_ns) |
++------------------+------------------+
+|      74038089664 |    6472465391160 |
++------------------+------------------+
