@@ -1,6 +1,5 @@
 -- sample.sql --
 select * from raw_g_transitions order by end_time_ns asc limit 3;
-
 -- sample.txt --
 ../testdata/testprog/go1.23.3.trace:
 +---+--------------+----------+--------+-------------+-------------+-------+------------+-------+----------+--------------+
