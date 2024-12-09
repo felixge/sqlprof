@@ -200,6 +200,13 @@ func (db *DB) loadTrace(ctx context.Context, r io.Reader) (rErr error) {
 	return nil
 }
 
+func nullableString(v string) any {
+	if v == "" {
+		return nil
+	}
+	return v
+}
+
 func nullableResource[T trace.ProcID | trace.GoID | trace.ThreadID](v T) any {
 	// TODO: ideally we'd check against trace.NoGoroutine and similar consts
 	// here.
@@ -210,7 +217,7 @@ func nullableResource[T trace.ProcID | trace.GoID | trace.ThreadID](v T) any {
 }
 
 func nullableStackID(v uint64) any {
-	if v == -0 {
+	if v == 0 {
 		return nil
 	}
 	return v
@@ -260,7 +267,7 @@ func (l *loader) GTransition(e *gTransition) error {
 		nullableResource(e.G),
 		e.FromState,
 		e.ToState,
-		e.Reason,
+		nullableString(e.Reason),
 		e.DurationNS,
 		e.EndTimeNS,
 		nullableResource(e.SrcG),
