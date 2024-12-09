@@ -1,6 +1,6 @@
--- columns.sql --
-select * from goroutine_groups;
--- columns.txt --
+-- sample.sql --
+select * from goroutine_groups limit 10;
+-- sample.txt --
 ../testdata/testprog/go1.23.3.trace:
 +-------------------------------------------+------------+-------------+------------+------------+-------------+-------+
 |                   name                    | running_ns | runnable_ns | syscall_ns | waiting_ns |  total_ns   | count |
