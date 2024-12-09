@@ -10,30 +10,57 @@ import (
 	"github.com/olekukonko/tablewriter"
 )
 
-func NewCSVWriter(w io.Writer) *CSVWriter {
-	return &CSVWriter{
-		w: csv.NewWriter(w),
+func NewCSVWriter(w io.Writer) *RowWriter {
+	cw := csv.NewWriter(w)
+	return &RowWriter{
+		flush:       cw.Flush,
+		writeRow:    cw.Write,
+		writeHeader: cw.Write,
 	}
 }
 
-type CSVWriter struct {
-	w       *csv.Writer
-	columns []column
+func NewASCIITableWriter(w io.Writer) *RowWriter {
+	tw := tablewriter.NewWriter(w)
+	tw.SetAutoFormatHeaders(false)
+	writeHeader := func(header []string) error {
+		tw.SetHeader(header)
+		return nil
+	}
+	writeRow := func(row []string) error {
+		tw.Append(row)
+		return nil
+	}
+	return &RowWriter{
+		flush:       tw.Render,
+		writeRow:    writeRow,
+		writeHeader: writeHeader,
+	}
 }
 
-func (c *CSVWriter) Rows(rows *sql.Rows) error {
+type RowWriter struct {
+	flush       func()
+	writeHeader func([]string) error
+	writeRow    func([]string) error
+	columns     []column
+}
+
+func (c *RowWriter) Rows(rows *sql.Rows) error {
+	// Fetch the rows
 	result, err := newRowsResult(rows)
 	if err != nil {
 		return err
 	}
 
+	// Write the header and remember the columns or check if they match the
+	// previous columns.
 	if c.columns == nil {
-		// Write the header and remember the columns
 		var header []string
 		for _, column := range result.columns {
 			header = append(header, column.name)
 		}
-		c.w.Write(header)
+		if err := c.writeHeader(header); err != nil {
+			return err
+		}
 		c.columns = result.columns
 	} else if !reflect.DeepEqual(c.columns, result.columns) {
 		return fmt.Errorf("columns mismatch: got=%v != want=%v", result.columns, c.columns)
@@ -45,70 +72,15 @@ func (c *CSVWriter) Rows(rows *sql.Rows) error {
 		for i, value := range row {
 			rowS[i] = fmt.Sprintf("%v", value)
 		}
-		c.w.Write(rowS)
+		if err := c.writeRow(rowS); err != nil {
+			return err
+		}
 	}
-
 	return nil
 }
 
-func (c *CSVWriter) Flush() {
-	c.w.Flush()
-}
-
-func NewASCIITableWriter(w io.Writer) *ASCIITableWriter {
-	return &ASCIITableWriter{
-		w: tablewriter.NewWriter(w),
-	}
-}
-
-type ASCIITableWriter struct {
-	w       *tablewriter.Table
-	columns []column
-}
-
-func (a *ASCIITableWriter) Rows(rows *sql.Rows) error {
-	result, err := newRowsResult(rows)
-	if err != nil {
-		return err
-	}
-
-	if a.columns == nil {
-		// Set the table header and remember the columns
-		var header []string
-		for _, column := range result.columns {
-			header = append(header, column.name)
-		}
-		a.w.SetHeader(header)
-		a.w.SetAutoFormatHeaders(false)
-		a.columns = result.columns
-	} else if !reflect.DeepEqual(a.columns, result.columns) {
-		return fmt.Errorf("columns mismatch: got=%v != want=%v", result.columns, a.columns)
-	}
-
-	// Add the rows
-	for _, row := range result.values {
-		rowS := make([]string, len(row))
-		for i, value := range row {
-			rowS[i] = fmt.Sprintf("%v", value)
-		}
-		a.w.Append(rowS)
-	}
-
-	return nil
-}
-
-func (a *ASCIITableWriter) Flush() {
-	a.w.Render()
-}
-
-type rowsResult struct {
-	columns []column
-	values  [][]any
-}
-
-type column struct {
-	name string
-	typ  string
+func (c *RowWriter) Flush() {
+	c.flush()
 }
 
 func newRowsResult(rows *sql.Rows) (*rowsResult, error) {
@@ -160,4 +132,44 @@ func newRowsResult(rows *sql.Rows) (*rowsResult, error) {
 	}
 
 	return &result, nil
+}
+
+func rowsWithSharedColumns(onHeader func([]string) error, onRow func([]any) error) func(*sql.Rows) error {
+	var columns []column
+	return func(rows *sql.Rows) error {
+		result, err := newRowsResult(rows)
+		if err != nil {
+			return err
+		}
+
+		if columns == nil {
+			var header []string
+			for _, column := range result.columns {
+				header = append(header, column.name)
+			}
+			columns = result.columns
+			if err := onHeader(header); err != nil {
+				return err
+			}
+		} else if !reflect.DeepEqual(columns, result.columns) {
+			return fmt.Errorf("columns mismatch: got=%v != want=%v", result.columns, columns)
+		}
+
+		for _, row := range result.values {
+			if err := onRow(row); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+}
+
+type rowsResult struct {
+	columns []column
+	values  [][]any
+}
+
+type column struct {
+	name string
+	typ  string
 }

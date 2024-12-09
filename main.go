@@ -2,7 +2,6 @@ package main
 
 import (
 	"crypto/sha256"
-	"database/sql"
 	"errors"
 	"flag"
 	"fmt"
@@ -92,10 +91,7 @@ func runInteractive(profilePath string) (err error) {
 
 func runQuery(format string, paths []string, query string) (err error) {
 	// Determine the row writer based on the requested format.
-	var rowWriter interface {
-		Rows(*sql.Rows) error
-		Flush()
-	}
+	var rowWriter *dbutil.RowWriter
 	switch format {
 	case "csv":
 		rowWriter = dbutil.NewCSVWriter(os.Stdout)
