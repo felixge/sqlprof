@@ -10,6 +10,7 @@ import (
 	"github.com/olekukonko/tablewriter"
 )
 
+// NewCSVWriter creates a new RowWriter that writes CSV formatted rows.
 func NewCSVWriter(w io.Writer) *RowWriter {
 	cw := csv.NewWriter(w)
 	return &RowWriter{
@@ -19,6 +20,7 @@ func NewCSVWriter(w io.Writer) *RowWriter {
 	}
 }
 
+// NewASCIITableWriter creates a new RowWriter that writes ASCII table formatted rows.
 func NewASCIITableWriter(w io.Writer) *RowWriter {
 	tw := tablewriter.NewWriter(w)
 	tw.SetAutoFormatHeaders(false)
@@ -37,6 +39,7 @@ func NewASCIITableWriter(w io.Writer) *RowWriter {
 	}
 }
 
+// RowWriter is a writer that writes rows to an underlying writer.
 type RowWriter struct {
 	flush       func()
 	writeHeader func([]string) error
@@ -44,6 +47,7 @@ type RowWriter struct {
 	columns     []column
 }
 
+// Rows writes the rows from the sql.Rows to the underlying writer.
 func (c *RowWriter) Rows(rows *sql.Rows) error {
 	// Fetch the rows
 	result, err := newRowsResult(rows)
@@ -79,6 +83,7 @@ func (c *RowWriter) Rows(rows *sql.Rows) error {
 	return nil
 }
 
+// Flush flushes the underlying writer.
 func (c *RowWriter) Flush() {
 	c.flush()
 }
@@ -134,41 +139,13 @@ func newRowsResult(rows *sql.Rows) (*rowsResult, error) {
 	return &result, nil
 }
 
-func rowsWithSharedColumns(onHeader func([]string) error, onRow func([]any) error) func(*sql.Rows) error {
-	var columns []column
-	return func(rows *sql.Rows) error {
-		result, err := newRowsResult(rows)
-		if err != nil {
-			return err
-		}
-
-		if columns == nil {
-			var header []string
-			for _, column := range result.columns {
-				header = append(header, column.name)
-			}
-			columns = result.columns
-			if err := onHeader(header); err != nil {
-				return err
-			}
-		} else if !reflect.DeepEqual(columns, result.columns) {
-			return fmt.Errorf("columns mismatch: got=%v != want=%v", result.columns, columns)
-		}
-
-		for _, row := range result.values {
-			if err := onRow(row); err != nil {
-				return err
-			}
-		}
-		return nil
-	}
-}
-
+// rowsResult holds the result of a rows query.
 type rowsResult struct {
 	columns []column
 	values  [][]any
 }
 
+// column describes a column in a row.
 type column struct {
 	name string
 	typ  string
