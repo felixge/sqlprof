@@ -25,6 +25,7 @@ func NewCSVWriter(w io.Writer) *RowWriter {
 func NewASCIITableWriter(w io.Writer) *RowWriter {
 	tw := tablewriter.NewWriter(w)
 	tw.SetAutoFormatHeaders(false)
+	tw.SetAutoWrapText(false)
 	writeHeader := func(header []string) error {
 		tw.SetHeader(header)
 		return nil
