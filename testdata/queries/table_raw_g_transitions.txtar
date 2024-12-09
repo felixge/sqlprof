@@ -20,16 +20,16 @@ select sum(duration_ns), sum(end_time_ns) from raw_g_transitions;
 |      74038089664 |    6472465391160 |
 +------------------+------------------+
 -- reason.sql --
-select distinct reason from raw_g_transitions;
+select distinct reason from raw_g_transitions order by 1;
 -- reason.txt --
 ../testdata/testprog/go1.23.3.trace:
 +-----------------------+
 |        reason         |
 +-----------------------+
 | chan receive          |
-| <nil>                 |
-| system goroutine wait |
-| sync                  |
 | preempted             |
 | sleep                 |
+| sync                  |
+| system goroutine wait |
+| <nil>                 |
 +-----------------------+
