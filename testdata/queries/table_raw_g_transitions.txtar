@@ -9,15 +9,22 @@ select * from raw_g_transitions order by end_time_ns asc limit 3;
 | 6 | notexist     | runnable | <nil>  |           0 |       15104 |     1 | 8674447168 |     0 |        5 |            4 |
 | 7 | notexist     | runnable | <nil>  |           0 |       15680 |     1 | 8674447168 |     0 |        7 |            6 |
 +---+--------------+----------+--------+-------------+-------------+-------+------------+-------+----------+--------------+
--- sum.sql --
-select sum(duration_ns), sum(end_time_ns) from raw_g_transitions;
--- sum.txt --
+-- aggregate.sql --
+select
+    min(duration_ns),
+    max(duration_ns),
+    sum(duration_ns),
+    min(end_time_ns),
+    max(end_time_ns),
+    sum(end_time_ns)
+from raw_g_transitions;
+-- aggregate.txt --
 ../testdata/testprog/go1.23.3.trace:
-+------------------+------------------+
-| sum(duration_ns) | sum(end_time_ns) |
-+------------------+------------------+
-|      74038089664 |    6472465391160 |
-+------------------+------------------+
++------------------+------------------+------------------+------------------+------------------+------------------+
+| min(duration_ns) | max(duration_ns) | sum(duration_ns) | min(end_time_ns) | max(end_time_ns) | sum(end_time_ns) |
++------------------+------------------+------------------+------------------+------------------+------------------+
+|                0 |       1008225344 |      74038089664 |              128 |      10000332864 |    6472465391160 |
++------------------+------------------+------------------+------------------+------------------+------------------+
 -- reason.sql --
 select distinct reason from raw_g_transitions order by 1;
 -- reason.txt --
