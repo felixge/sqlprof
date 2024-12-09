@@ -2,16 +2,20 @@ package main
 
 import (
 	"crypto/sha256"
+	"database/sql"
 	"errors"
 	"flag"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
+	"sync"
 
 	"github.com/felixge/sqlprof/db"
 	"github.com/felixge/sqlprof/db/dbutil"
 	"github.com/felixge/sqlprof/internal/profile"
+	"github.com/sourcegraph/conc/pool"
 )
 
 func main() {
@@ -87,34 +91,47 @@ func runInteractive(profilePath string) (err error) {
 }
 
 func runQuery(format string, paths []string, query string) (err error) {
-	// TODO: Support multiple paths.
-	if len(paths) > 1 {
-		return fmt.Errorf("not implemented: multiple paths=%v query=%q", paths, query)
+	// Determine the row writer based on the requested format.
+	var rowWriter interface {
+		Rows(*sql.Rows) error
+		Flush()
 	}
-
-	// Load the profile into a temporary duckdb database.
-	var db *db.DB
-	if db, err = loadProfile(paths[0]); err != nil {
-		return fmt.Errorf("failed to load profile: %w", err)
-	}
-	// Close the db and remove its file after the interactive session is done.
-	defer func() { err = errors.Join(err, db.Close(), os.Remove(db.Path())) }()
-
-	rows, err := db.Query(query)
-	if err != nil {
-		return fmt.Errorf("failed to query: %w", err)
-	}
-
-	// Print the query result based on the format.
 	switch format {
 	case "csv":
-		dbutil.WriteCSV(os.Stdout, rows)
+		rowWriter = dbutil.NewCSVWriter(os.Stdout)
 	case "table":
-		dbutil.WriteASCIITable(os.Stdout, rows)
+		rowWriter = dbutil.NewASCIITableWriter(os.Stdout)
 	default:
 		return fmt.Errorf("unsupported format: %s", format)
 	}
-	return nil
+	defer rowWriter.Flush()
+
+	// Execute the query against each profile using a pool of goroutines.
+	var rowWriterMu sync.Mutex
+	p := pool.New().WithErrors().WithMaxGoroutines(runtime.GOMAXPROCS(0))
+	for _, path := range paths {
+		p.Go(func() error {
+			// Load the profile into a temporary duckdb database.
+			var db *db.DB
+			if db, err = loadProfile(path); err != nil {
+				return fmt.Errorf("failed to load profile: %w", err)
+			}
+			// Close the db and remove its file after the interactive session is done.
+			defer func() { err = errors.Join(err, db.Close(), os.Remove(db.Path())) }()
+
+			// Execute the query against the database.
+			rows, err := db.Query(query)
+			if err != nil {
+				return fmt.Errorf("failed to query: %w", err)
+			}
+
+			// Write the rows to the output.
+			rowWriterMu.Lock()
+			defer rowWriterMu.Unlock()
+			return rowWriter.Rows(rows)
+		})
+	}
+	return p.Wait()
 }
 
 func loadProfile(profilePath string) (*db.DB, error) {

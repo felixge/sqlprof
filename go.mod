@@ -6,6 +6,7 @@ require (
 	github.com/marcboeker/go-duckdb v1.8.3
 	github.com/olekukonko/tablewriter v0.0.5
 	github.com/rogpeppe/go-internal v1.13.1
+	github.com/sourcegraph/conc v0.3.0
 	golang.org/x/exp v0.0.0-20240909161429-701f63a606c0
 )
 
@@ -20,6 +21,8 @@ require (
 	github.com/pierrec/lz4/v4 v4.1.21 // indirect
 	github.com/stretchr/testify v1.10.0 // indirect
 	github.com/zeebo/xxh3 v1.0.2 // indirect
+	go.uber.org/atomic v1.7.0 // indirect
+	go.uber.org/multierr v1.9.0 // indirect
 	golang.org/x/mod v0.21.0 // indirect
 	golang.org/x/sync v0.8.0 // indirect
 	golang.org/x/sys v0.26.0 // indirect

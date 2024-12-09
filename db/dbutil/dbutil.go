@@ -5,25 +5,39 @@ import (
 	"encoding/csv"
 	"fmt"
 	"io"
+	"reflect"
 
 	"github.com/olekukonko/tablewriter"
 )
 
-func WriteCSV(w io.Writer, rows *sql.Rows) (err error) {
+func NewCSVWriter(w io.Writer) *CSVWriter {
+	return &CSVWriter{
+		w: csv.NewWriter(w),
+	}
+}
+
+type CSVWriter struct {
+	w       *csv.Writer
+	columns []column
+}
+
+func (c *CSVWriter) Rows(rows *sql.Rows) error {
 	result, err := newRowsResult(rows)
 	if err != nil {
 		return err
 	}
 
-	writer := csv.NewWriter(w)
-	defer writer.Flush()
-
-	// Write the header
-	var header []string
-	for _, column := range result.columns {
-		header = append(header, column.name)
+	if c.columns == nil {
+		// Write the header and remember the columns
+		var header []string
+		for _, column := range result.columns {
+			header = append(header, column.name)
+		}
+		c.w.Write(header)
+		c.columns = result.columns
+	} else if !reflect.DeepEqual(c.columns, result.columns) {
+		return fmt.Errorf("columns mismatch: got=%v != want=%v", result.columns, c.columns)
 	}
-	writer.Write(header)
 
 	// Write the rows
 	for _, row := range result.values {
@@ -31,25 +45,45 @@ func WriteCSV(w io.Writer, rows *sql.Rows) (err error) {
 		for i, value := range row {
 			rowS[i] = fmt.Sprintf("%v", value)
 		}
-		writer.Write(rowS)
+		c.w.Write(rowS)
 	}
+
 	return nil
 }
 
-func WriteASCIITable(w io.Writer, rows *sql.Rows) error {
+func (c *CSVWriter) Flush() {
+	c.w.Flush()
+}
+
+func NewASCIITableWriter(w io.Writer) *ASCIITableWriter {
+	return &ASCIITableWriter{
+		w: tablewriter.NewWriter(w),
+	}
+}
+
+type ASCIITableWriter struct {
+	w       *tablewriter.Table
+	columns []column
+}
+
+func (a *ASCIITableWriter) Rows(rows *sql.Rows) error {
 	result, err := newRowsResult(rows)
 	if err != nil {
 		return err
 	}
 
-	table := tablewriter.NewWriter(w)
-	// Set the table header
-	var header []string
-	for _, column := range result.columns {
-		header = append(header, column.name)
+	if a.columns == nil {
+		// Set the table header and remember the columns
+		var header []string
+		for _, column := range result.columns {
+			header = append(header, column.name)
+		}
+		a.w.SetHeader(header)
+		a.w.SetAutoFormatHeaders(false)
+		a.columns = result.columns
+	} else if !reflect.DeepEqual(a.columns, result.columns) {
+		return fmt.Errorf("columns mismatch: got=%v != want=%v", result.columns, a.columns)
 	}
-	table.SetHeader(header)
-	table.SetAutoFormatHeaders(false)
 
 	// Add the rows
 	for _, row := range result.values {
@@ -57,12 +91,14 @@ func WriteASCIITable(w io.Writer, rows *sql.Rows) error {
 		for i, value := range row {
 			rowS[i] = fmt.Sprintf("%v", value)
 		}
-		table.Append(rowS)
+		a.w.Append(rowS)
 	}
 
-	// Render the table
-	table.Render()
 	return nil
+}
+
+func (a *ASCIITableWriter) Flush() {
+	a.w.Render()
 }
 
 type rowsResult struct {

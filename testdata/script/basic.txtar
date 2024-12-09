@@ -2,6 +2,10 @@
 exec sqlprof testdata/testprog/go1.23.3.trace 'SELECT count(*) FROM goroutines'
 cmp stdout non-interactive.stdout.txt
 
+# Multiple inputs (TODO: use two different traces)
+exec sqlprof testdata/testprog/go1.23.3.trace testdata/testprog/go1.23.3.trace 'SELECT count(*) FROM goroutines'
+cmp stdout two-traces.non-interactive.stdout.txt
+
 # CSV Output format
 exec sqlprof -format csv testdata/testprog/go1.23.3.trace 'SELECT * FROM goroutines ORDER BY g LIMIT 3'
 cmp stdout non-interactive-csv.stdout.txt
@@ -15,6 +19,13 @@ cmp stdout interactive.stdout.txt
 +--------------+
 | count_star() |
 +--------------+
+|            9 |
++--------------+
+-- two-traces.non-interactive.stdout.txt --
++--------------+
+| count_star() |
++--------------+
+|            9 |
 |            9 |
 +--------------+
 -- non-interactive-csv.stdout.txt --
