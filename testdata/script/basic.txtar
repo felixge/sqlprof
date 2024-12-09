@@ -2,7 +2,7 @@
 exec sqlprof testdata/testprog/go1.23.3.trace 'SELECT count(*) FROM goroutines'
 cmp stdout non-interactive.stdout.txt
 
-# Multiple inputs (TODO: use two different traces)
+# Multiple inputs. Using the same trace since output order is not guaranteed.
 exec sqlprof testdata/testprog/go1.23.3.trace testdata/testprog/go1.23.3.trace 'SELECT count(*) FROM goroutines'
 cmp stdout two-traces.non-interactive.stdout.txt
 

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"reflect"
+	"sync"
 
 	"github.com/olekukonko/tablewriter"
 )
@@ -41,19 +42,25 @@ func NewASCIITableWriter(w io.Writer) *RowWriter {
 
 // RowWriter is a writer that writes rows to an underlying writer.
 type RowWriter struct {
+	mu          sync.Mutex
 	flush       func()
 	writeHeader func([]string) error
 	writeRow    func([]string) error
 	columns     []column
 }
 
-// Rows writes the rows from the sql.Rows to the underlying writer.
+// Rows writes the rows from the sql.Rows to the underlying writer. It is safe
+// to call this method concurrently.
 func (c *RowWriter) Rows(rows *sql.Rows) error {
 	// Fetch the rows
 	result, err := newRowsResult(rows)
 	if err != nil {
 		return err
 	}
+
+	// Acquire a lock to prevent interleaving writes.
+	c.mu.Lock()
+	defer c.mu.Unlock()
 
 	// Write the header and remember the columns or check if they match the
 	// previous columns.

@@ -9,7 +9,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
-	"sync"
 
 	"github.com/felixge/sqlprof/db"
 	"github.com/felixge/sqlprof/db/dbutil"
@@ -103,7 +102,6 @@ func runQuery(format string, paths []string, query string) (err error) {
 	defer rowWriter.Flush()
 
 	// Execute the query against each profile using a pool of goroutines.
-	var rowWriterMu sync.Mutex
 	p := pool.New().WithErrors().WithMaxGoroutines(runtime.GOMAXPROCS(0))
 	for _, path := range paths {
 		p.Go(func() error {
@@ -122,8 +120,6 @@ func runQuery(format string, paths []string, query string) (err error) {
 			}
 
 			// Write the rows to the output.
-			rowWriterMu.Lock()
-			defer rowWriterMu.Unlock()
 			return rowWriter.Rows(rows)
 		})
 	}
