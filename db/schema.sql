@@ -18,8 +18,9 @@ CREATE TABLE p_transitions (
     to_state TEXT,
     duration_ns BIGINT,
     end_time_ns BIGINT,
-    g BIGINT,
-    m BIGINT,
+    src_p BIGINT,
+    src_g BIGINT,
+    src_m BIGINT
 );
 
 CREATE TABLE stack_frames (

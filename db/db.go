@@ -154,12 +154,13 @@ func (db *DB) loadTrace(ctx context.Context, r io.Reader) (rErr error) {
 					dt = ev.Time() - p.time
 				}
 				transition := &pTransition{
+					P:          procID,
 					StackID:    srcStackID,
 					EndTimeNS:  uint64(ev.Time()),
 					DurationNS: uint64(dt),
-					G:          ev.Goroutine(),
-					P:          procID,
-					M:          ev.Thread(),
+					SrcG:       ev.Goroutine(),
+					SrcP:       ev.Proc(),
+					SrcM:       ev.Thread(),
 					FromState:  strings.ToLower(from.String()),
 					ToState:    strings.ToLower(to.String()),
 					Reason:     st.Reason,
@@ -168,7 +169,6 @@ func (db *DB) loadTrace(ctx context.Context, r io.Reader) (rErr error) {
 					return err
 				}
 				p.time = ev.Time()
-
 			case trace.ResourceGoroutine:
 				from, to := st.Goroutine()
 				goID := st.Resource.Goroutine()
@@ -295,8 +295,9 @@ func (l *loader) PTransition(e *pTransition) error {
 		e.ToState,
 		e.DurationNS,
 		e.EndTimeNS,
-		nullableResource(e.G),
-		nullableResource(e.M),
+		nullableResource(e.SrcP),
+		nullableResource(e.SrcG),
+		nullableResource(e.SrcM),
 	)
 }
 
@@ -416,11 +417,12 @@ type gTransition struct {
 }
 
 type pTransition struct {
+	P          trace.ProcID
 	EndTimeNS  uint64
 	DurationNS uint64
-	G          trace.GoID
-	P          trace.ProcID
-	M          trace.ThreadID
+	SrcG       trace.GoID
+	SrcP       trace.ProcID
+	SrcM       trace.ThreadID
 	FromState  string
 	ToState    string
 	Reason     string
