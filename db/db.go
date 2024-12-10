@@ -120,6 +120,17 @@ func (db *DB) loadTrace(ctx context.Context, r io.Reader) (rErr error) {
 		}
 
 		switch ev.Kind() {
+		case trace.EventStackSample:
+			sample := &cpuSample{
+				EndTimeNS: uint64(ev.Time()),
+				StackID:   srcStackID,
+				G:         ev.Goroutine(),
+				P:         ev.Proc(),
+				M:         ev.Thread(),
+			}
+			if err := l.CPUSample(sample); err != nil {
+				return err
+			}
 		case trace.EventStateTransition:
 			st := ev.StateTransition()
 			var stackID uint64
@@ -197,10 +208,8 @@ func (db *DB) loadTrace(ctx context.Context, r io.Reader) (rErr error) {
 					return err
 				}
 				g.time = ev.Time()
-
 			}
 		}
-
 	}
 
 	if err := l.Close(); err != nil {
@@ -253,7 +262,15 @@ func (db *DB) loader(ctx context.Context) (*loader, error) {
 		return nil, err
 	}
 	l.conn = conn
-	for _, table := range []string{"functions", "frames", "stack_frames", "raw_g_transitions", "p_transitions"} {
+	tables := []string{
+		"functions",
+		"frames",
+		"stack_frames",
+		"raw_g_transitions",
+		"p_transitions",
+		"raw_cpu_samples",
+	}
+	for _, table := range tables {
 		appender, err := duckdb.NewAppenderFromConn(conn, "", table)
 		if err != nil {
 			return nil, err
@@ -298,6 +315,16 @@ func (l *loader) PTransition(e *pTransition) error {
 		nullableResource(e.SrcP),
 		nullableResource(e.SrcG),
 		nullableResource(e.SrcM),
+	)
+}
+
+func (l *loader) CPUSample(s *cpuSample) error {
+	return l.appenders["raw_cpu_samples"].AppendRow(
+		s.EndTimeNS,
+		nullableStackID(s.StackID),
+		nullableResource(s.G),
+		nullableResource(s.P),
+		nullableResource(s.M),
 	)
 }
 
@@ -427,6 +454,14 @@ type pTransition struct {
 	ToState    string
 	Reason     string
 	StackID    uint64
+}
+
+type cpuSample struct {
+	EndTimeNS uint64
+	StackID   uint64
+	G         trace.GoID
+	P         trace.ProcID
+	M         trace.ThreadID
 }
 
 // newStackKey returns a new StackKey for the given frames. The key is the

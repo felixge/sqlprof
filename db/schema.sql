@@ -23,6 +23,14 @@ create table p_transitions (
     src_m bigint
 );
 
+create table raw_cpu_samples (
+    end_time_ns bigint,
+    stack_id ubigint,
+    g bigint,
+    p bigint,
+    m bigint
+);
+
 create table stack_frames (
     stack_id ubigint,
     frame_id ubigint,
