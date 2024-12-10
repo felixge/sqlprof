@@ -1,9 +1,14 @@
 -- zero.sql --
-select end_time_ns, rel_time_ns(end_time_ns) FROM raw_g_transitions ORDER BY end_time_ns ASC LIMIT 1;
+select
+    min(end_time_ns) AS abs_start,
+    max(end_time_ns) AS abs_end,
+    rel_time_ns(min(end_time_ns)) AS rel_start,
+    rel_time_ns(max(end_time_ns)) AS rel_end
+FROM raw_g_transitions;
 -- zero.txt --
 ../testdata/testprog/go1.23.3.trace:
-+-----------------+--------------------------+
-|   end_time_ns   | rel_time_ns(end_time_ns) |
-+-----------------+--------------------------+
-| 855758432930816 |                      128 |
-+-----------------+--------------------------+
++-----------------+-----------------+-----------+-------------+
+|    abs_start    |     abs_end     | rel_start |   rel_end   |
++-----------------+-----------------+-----------+-------------+
+| 855758432930816 | 855768433263552 |       128 | 10000332864 |
++-----------------+-----------------+-----------+-------------+
