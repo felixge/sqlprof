@@ -34,6 +34,7 @@ func TestQueries(t *testing.T) {
 			Data: bytes.NewReader(data),
 		})
 		require.NoError(t, err)
+		defer trace.db.Close()
 	}
 
 	tarPaths, err := filepath.Glob(filepath.Join("..", "testdata/queries/*.txtar.sql"))

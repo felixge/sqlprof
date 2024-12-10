@@ -135,12 +135,12 @@ func (db *DB) loadTrace(ctx context.Context, r io.Reader) (rErr error) {
 			metricEv := ev.Metric()
 			switch metricEv.Value.Kind() {
 			case trace.ValueUint64:
-				m := &metric{
-					EndTimeNS: uint64(ev.Time()),
-					Name:      metricEv.Name,
-					Value:     int64(metricEv.Value.Uint64()),
-				}
-				if err := l.Metric(m); err != nil {
+				if err := l.Append(
+					"metrics",
+					uint64(ev.Time()),
+					metricEv.Name,
+					int64(metricEv.Value.Uint64()),
+				); err != nil {
 					return err
 				}
 			default:
@@ -304,6 +304,17 @@ type loader struct {
 	appenders map[string]*duckdb.Appender
 }
 
+func (l *loader) Append(table string, args ...driver.Value) (err error) {
+	appender, ok := l.appenders[table]
+	if !ok {
+		if appender, err = duckdb.NewAppenderFromConn(l.conn, "", table); err != nil {
+			return
+		}
+		l.appenders[table] = appender
+	}
+	return appender.AppendRow(args...)
+}
+
 // GTransition appends an transition to the database.
 func (l *loader) GTransition(e *gTransition) error {
 	return l.appenders["raw_g_transitions"].AppendRow(
@@ -341,14 +352,6 @@ func (l *loader) CPUSample(s *cpuSample) error {
 		nullableResource(s.G),
 		nullableResource(s.P),
 		nullableResource(s.M),
-	)
-}
-
-func (l *loader) Metric(m *metric) error {
-	return l.appenders["metrics"].AppendRow(
-		m.EndTimeNS,
-		m.Name,
-		m.Value,
 	)
 }
 
@@ -486,12 +489,6 @@ type cpuSample struct {
 	G         trace.GoID
 	P         trace.ProcID
 	M         trace.ThreadID
-}
-
-type metric struct {
-	EndTimeNS uint64
-	Name      string
-	Value     int64
 }
 
 // newStackKey returns a new StackKey for the given frames. The key is the
