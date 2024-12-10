@@ -152,7 +152,10 @@ select
     name,
     value,
     stack_id,
+    stack,
     g,
     p,
     m
-from raw_metrics;
+from raw_metrics
+left join stacks using (stack_id)
+order by end_time_ns;
