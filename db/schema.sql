@@ -1,61 +1,61 @@
-CREATE TABLE raw_g_transitions (
-    g BIGINT,
-    from_state TEXT,
-    to_state TEXT,
-    reason TEXT,
-    duration_ns BIGINT,
-    end_time_ns BIGINT,
-    stack_id UBIGINT,
-    src_stack_id UBIGINT,
-    src_g BIGINT,
-    src_m BIGINT,
-    src_p BIGINT
+create table raw_g_transitions (
+    g bigint,
+    from_state text,
+    to_state text,
+    reason text,
+    duration_ns bigint,
+    end_time_ns bigint,
+    stack_id ubigint,
+    src_stack_id ubigint,
+    src_g bigint,
+    src_m bigint,
+    src_p bigint
 );
 
-CREATE TABLE p_transitions (
-    p BIGINT,
-    from_state TEXT,
-    to_state TEXT,
-    duration_ns BIGINT,
-    end_time_ns BIGINT,
-    src_p BIGINT,
-    src_g BIGINT,
-    src_m BIGINT
+create table p_transitions (
+    p bigint,
+    from_state text,
+    to_state text,
+    duration_ns bigint,
+    end_time_ns bigint,
+    src_p bigint,
+    src_g bigint,
+    src_m bigint
 );
 
-CREATE TABLE stack_frames (
-    stack_id UBIGINT,
-    frame_id UBIGINT,
-    position UBIGINT
+create table stack_frames (
+    stack_id ubigint,
+    frame_id ubigint,
+    position ubigint
 );
 
-CREATE TABLE frames (
-    frame_id UBIGINT,
-    address UBIGINT,
-    function_id UBIGINT,
-    line UBIGINT
+create table frames (
+    frame_id ubigint,
+    address ubigint,
+    function_id ubigint,
+    line ubigint
 );
 
-CREATE TABLE functions (
-    function_id UBIGINT,
-    name TEXT,
-    file TEXT,
+create table functions (
+    function_id ubigint,
+    name text,
+    file text,
 );
 
-CREATE VIEW stacks AS
-SELECT
+create view stacks as
+select
     stack_id,
-    ARRAY_AGG(functions.name ORDER BY stack_frames.position) AS functions,
-    ARRAY_AGG(functions.file ORDER BY stack_frames.position) AS files,
-    ARRAY_AGG(frames.line ORDER BY stack_frames.position) AS lines,
-    ARRAY_AGG(frames.frame_id ORDER BY stack_frames.position) AS frame_ids
-FROM stack_frames
-JOIN frames USING (frame_id)
-JOIN functions USING (function_id)
-GROUP BY stack_id;
+    array_agg(functions.name order by stack_frames.position) as functions,
+    array_agg(functions.file order by stack_frames.position) as files,
+    array_agg(frames.line order by stack_frames.position) as lines,
+    array_agg(frames.frame_id order by stack_frames.position) as frame_ids
+from stack_frames
+join frames using (frame_id)
+join functions using (function_id)
+group by stack_id;
 
-CREATE VIEW g_transitions AS
-SELECT
+create view g_transitions as
+select
     raw_g_transitions.g,
     raw_g_transitions.from_state,
     raw_g_transitions.to_state,
@@ -63,56 +63,56 @@ SELECT
     raw_g_transitions.duration_ns,
     raw_g_transitions.end_time_ns,
     raw_g_transitions.stack_id,
-    stacks.functions AS stack,
+    stacks.functions as stack,
     raw_g_transitions.src_stack_id,
-    src_stacks.functions AS src_stack,
+    src_stacks.functions as src_stack,
     raw_g_transitions.src_g,
     raw_g_transitions.src_m,
     raw_g_transitions.src_p
 
-FROM raw_g_transitions
-LEFT JOIN stacks ON raw_g_transitions.stack_id = stacks.stack_id
-LEFT JOIN stacks AS src_stacks ON raw_g_transitions.src_stack_id = src_stacks.stack_id;
+from raw_g_transitions
+left join stacks on raw_g_transitions.stack_id = stacks.stack_id
+left join stacks as src_stacks on raw_g_transitions.src_stack_id = src_stacks.stack_id;
 
-CREATE VIEW goroutines AS
-SELECT
+create view goroutines as
+select
     g,
     coalesce(
-        first(stack[len(stack):] ORDER BY end_time_ns) FILTER (WHERE stack is not null),
-        first(src_stack[len(src_stack):] ORDER BY end_time_ns) FILTER (WHERE src_stack is not null)
-    )[1] AS name,
-    bool_or(reason = 'system goroutine wait') OR name LIKE 'runtime.%' AS is_system_goroutine,
-    coalesce(sum(duration_ns) FILTER (WHERE from_state = 'running'), 0) AS running_ns,
-    coalesce(sum(duration_ns) FILTER (WHERE from_state = 'runnable'), 0) AS runnable_ns,
-    coalesce(sum(duration_ns) FILTER (WHERE from_state = 'syscall'), 0) AS syscall_ns,
-    coalesce(sum(duration_ns) FILTER (WHERE from_state = 'waiting'), 0) AS waiting_ns,
-    sum(duration_ns) AS total_ns,
+        first(stack[len(stack):] order by end_time_ns) filter (where stack is not null),
+        first(src_stack[len(src_stack):] order by end_time_ns) filter (where src_stack is not null)
+    )[1] as name,
+    bool_or(reason = 'system goroutine wait') or name like 'runtime.%' as is_system_goroutine,
+    coalesce(sum(duration_ns) filter (where from_state = 'running'), 0) as running_ns,
+    coalesce(sum(duration_ns) filter (where from_state = 'runnable'), 0) as runnable_ns,
+    coalesce(sum(duration_ns) filter (where from_state = 'syscall'), 0) as syscall_ns,
+    coalesce(sum(duration_ns) filter (where from_state = 'waiting'), 0) as waiting_ns,
+    sum(duration_ns) as total_ns,
     count(*) as transitions
-FROM g_transitions
-GROUP BY 1
-ORDER BY running_ns DESC;
+from g_transitions
+group by 1
+order by running_ns desc;
 
-CREATE VIEW procs AS
-SELECT
+create view procs as
+select
     p,
-    coalesce(sum(duration_ns) FILTER (WHERE from_state = 'running'), 0) AS running_ns,
-    coalesce(sum(duration_ns) FILTER (WHERE from_state = 'idle'), 0) AS idle_ns,
-    sum(duration_ns) AS total_ns,
+    coalesce(sum(duration_ns) filter (where from_state = 'running'), 0) as running_ns,
+    coalesce(sum(duration_ns) filter (where from_state = 'idle'), 0) as idle_ns,
+    sum(duration_ns) as total_ns,
     count(*) as transitions
-FROM p_transitions
-GROUP BY 1
-ORDER BY running_ns DESC;
+from p_transitions
+group by 1
+order by running_ns desc;
 
-CREATE VIEW goroutine_groups AS
-SELECT
+create view goroutine_groups as
+select
     name,
-    sum(running_ns) AS running_ns,
-    sum(runnable_ns) AS runnable_ns,
-    sum(syscall_ns) AS syscall_ns,
-    sum(waiting_ns) AS waiting_ns,
-    sum(total_ns) AS total_ns,
+    sum(running_ns) as running_ns,
+    sum(runnable_ns) as runnable_ns,
+    sum(syscall_ns) as syscall_ns,
+    sum(waiting_ns) as waiting_ns,
+    sum(total_ns) as total_ns,
     sum(transitions) as transitions,
-    count(*) AS count,
-FROM goroutines
-GROUP BY 1
-ORDER BY running_ns DESC, name;
+    count(*) as count,
+from goroutines
+group by 1
+order by running_ns desc, name;
