@@ -136,10 +136,14 @@ func (db *DB) loadTrace(ctx context.Context, r io.Reader) (rErr error) {
 			switch metricEv.Value.Kind() {
 			case trace.ValueUint64:
 				if err := l.Append(
-					"metrics",
+					"raw_metrics",
 					uint64(ev.Time()),
 					metricEv.Name,
 					int64(metricEv.Value.Uint64()),
+					nullableStackID(srcStackID),
+					nullableResource(ev.Goroutine()),
+					nullableResource(ev.Proc()),
+					nullableResource(ev.Thread()),
 				); err != nil {
 					return err
 				}
@@ -282,7 +286,6 @@ func (db *DB) loader(ctx context.Context) (*loader, error) {
 		"raw_g_transitions",
 		"p_transitions",
 		"raw_cpu_samples",
-		"metrics",
 	}
 	for _, table := range tables {
 		appender, err := duckdb.NewAppenderFromConn(conn, "", table)
