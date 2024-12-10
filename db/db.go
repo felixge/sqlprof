@@ -94,10 +94,9 @@ func (db *DB) loadTrace(ctx context.Context, r io.Reader) (rErr error) {
 	}
 	defer l.Close()
 
-	var traceStart trace.Time
 	gIdx := map[trace.GoID]*gState{}
 	pIdx := map[trace.ProcID]*pState{}
-	for {
+	for first := true; ; first = false {
 		ev, err := tr.ReadEvent()
 		if err == io.EOF {
 			break
@@ -105,11 +104,11 @@ func (db *DB) loadTrace(ctx context.Context, r io.Reader) (rErr error) {
 			return err
 		}
 
-		if traceStart == 0 {
-			traceStart = ev.Time()
-			macroSQL := fmt.Sprintf(`create macro abs_time_ns(rel_time_ns) AS (
-			  SELECT rel_time_ns + %v 
-);`, traceStart)
+		if first {
+			macroSQL := fmt.Sprintf(
+				`create macro rel_time_ns(abs_time_ns) AS (SELECT abs_time_ns - %v);`,
+				ev.Time(),
+			)
 			if _, err := db.ExecContext(ctx, macroSQL); err != nil {
 				return err
 			}
@@ -145,7 +144,7 @@ func (db *DB) loadTrace(ctx context.Context, r io.Reader) (rErr error) {
 				}
 				transition := &pTransition{
 					StackID:    srcStackID,
-					EndTimeNS:  uint64(ev.Time() - traceStart),
+					EndTimeNS:  uint64(ev.Time()),
 					DurationNS: uint64(dt),
 					G:          ev.Goroutine(),
 					P:          procID,
@@ -172,7 +171,7 @@ func (db *DB) loadTrace(ctx context.Context, r io.Reader) (rErr error) {
 				}
 				transition := &gTransition{
 					G:          goID,
-					EndTimeNS:  uint64(ev.Time() - traceStart),
+					EndTimeNS:  uint64(ev.Time()),
 					DurationNS: uint64(dt),
 					SrcG:       ev.Goroutine(),
 					SrcP:       ev.Proc(),
