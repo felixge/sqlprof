@@ -31,6 +31,12 @@ create table raw_cpu_samples (
     m bigint
 );
 
+create table metrics (
+    end_time_ns bigint,
+    name text,
+    value bigint
+);
+
 create table stack_frames (
     stack_id ubigint,
     frame_id ubigint,

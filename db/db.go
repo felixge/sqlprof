@@ -131,6 +131,21 @@ func (db *DB) loadTrace(ctx context.Context, r io.Reader) (rErr error) {
 			if err := l.CPUSample(sample); err != nil {
 				return err
 			}
+		case trace.EventMetric:
+			metricEv := ev.Metric()
+			switch metricEv.Value.Kind() {
+			case trace.ValueUint64:
+				m := &metric{
+					EndTimeNS: uint64(ev.Time()),
+					Name:      metricEv.Name,
+					Value:     int64(metricEv.Value.Uint64()),
+				}
+				if err := l.Metric(m); err != nil {
+					return err
+				}
+			default:
+				return fmt.Errorf("unsupported metric value kind: %v", metricEv.Value.Kind())
+			}
 		case trace.EventStateTransition:
 			st := ev.StateTransition()
 			var stackID uint64
@@ -269,6 +284,7 @@ func (db *DB) loader(ctx context.Context) (*loader, error) {
 		"raw_g_transitions",
 		"p_transitions",
 		"raw_cpu_samples",
+		"metrics",
 	}
 	for _, table := range tables {
 		appender, err := duckdb.NewAppenderFromConn(conn, "", table)
@@ -325,6 +341,14 @@ func (l *loader) CPUSample(s *cpuSample) error {
 		nullableResource(s.G),
 		nullableResource(s.P),
 		nullableResource(s.M),
+	)
+}
+
+func (l *loader) Metric(m *metric) error {
+	return l.appenders["metrics"].AppendRow(
+		m.EndTimeNS,
+		m.Name,
+		m.Value,
 	)
 }
 
@@ -462,6 +486,12 @@ type cpuSample struct {
 	G         trace.GoID
 	P         trace.ProcID
 	M         trace.ThreadID
+}
+
+type metric struct {
+	EndTimeNS uint64
+	Name      string
+	Value     int64
 }
 
 // newStackKey returns a new StackKey for the given frames. The key is the
