@@ -65,7 +65,10 @@ SELECT
     raw_g_transitions.src_g,
     raw_g_transitions.src_m,
     raw_g_transitions.src_p,
-    src_stacks.functions AS src_stack
+    src_stacks.functions AS src_stack,
+    raw_g_transitions.stack_id,
+    raw_g_transitions.src_stack_id
+
 FROM raw_g_transitions
 LEFT JOIN stacks ON raw_g_transitions.stack_id = stacks.stack_id
 LEFT JOIN stacks AS src_stacks ON raw_g_transitions.src_stack_id = src_stacks.stack_id;
