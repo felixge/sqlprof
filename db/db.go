@@ -92,7 +92,7 @@ func (db *DB) loadTrace(ctx context.Context, r io.Reader) (rErr error) {
 	if err != nil {
 		return err
 	}
-	defer l.Close()
+	defer func() { rErr = errors.Join(rErr, l.Close()) }()
 
 	gIdx := map[trace.GoID]*gState{}
 	pIdx := map[trace.ProcID]*pState{}
@@ -228,12 +228,7 @@ func (db *DB) loadTrace(ctx context.Context, r io.Reader) (rErr error) {
 			}
 		}
 	}
-
-	if err := l.Close(); err != nil {
-		return err
-	}
-
-	return nil
+	return
 }
 
 func nullableString(v string) any {
@@ -279,21 +274,6 @@ func (db *DB) loader(ctx context.Context) (*loader, error) {
 		return nil, err
 	}
 	l.conn = conn
-	tables := []string{
-		"functions",
-		"frames",
-		"stack_frames",
-		"raw_g_transitions",
-		"p_transitions",
-		"raw_cpu_samples",
-	}
-	for _, table := range tables {
-		appender, err := duckdb.NewAppenderFromConn(conn, "", table)
-		if err != nil {
-			return nil, err
-		}
-		l.appenders[table] = appender
-	}
 	return l, nil
 }
 
@@ -328,7 +308,8 @@ func (l *loader) Stack(s trace.Stack) (stackID uint64, err error) {
 		if !ok {
 			fn = &functionRow{FunctionID: uint64(len(l.funcIdx) + 1), functionKey: fnKey}
 			l.funcIdx[fnKey] = fn
-			if err = l.appenders["functions"].AppendRow(
+			if err = l.Append(
+				"functions",
 				fn.FunctionID,
 				fn.Name,
 				fn.File,
@@ -341,7 +322,8 @@ func (l *loader) Stack(s trace.Stack) (stackID uint64, err error) {
 		if !ok {
 			frame = &frameRow{FrameID: uint64(len(l.frameIdx) + 1), frameKey: frameKey}
 			l.frameIdx[frameKey] = frame
-			if err = l.appenders["frames"].AppendRow(
+			if err = l.Append(
+				"frames",
 				frame.FrameID,
 				frame.Address,
 				frame.Function.FunctionID,
@@ -366,7 +348,8 @@ func (l *loader) Stack(s trace.Stack) (stackID uint64, err error) {
 		stk = &stack{StackID: uint64(len(l.stackIdx) + 1), Frames: frames}
 		l.stackIdx[stackKey] = stk
 		for i, frame := range stk.Frames {
-			if err := l.appenders["stack_frames"].AppendRow(
+			if err := l.Append(
+				"stack_frames",
 				stk.StackID,
 				frame.FrameID,
 				i,
