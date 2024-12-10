@@ -1,13 +1,14 @@
 package main
 
 import (
+	"errors"
 	"flag"
 	"fmt"
-	"io"
 	"os"
-	"runtime/pprof"
-	"runtime/trace"
+	"runtime"
 	"time"
+
+	"github.com/felixge/sqlprof/internal/profile"
 )
 
 func main() {
@@ -17,41 +18,32 @@ func main() {
 	}
 }
 
-func run() error {
+func run() (err error) {
+	var (
+		cpuProfile = flag.String("cpuprofile", runtime.Version()+".cpu.pprof", "write cpu profile to file")
+		memProfile = flag.String("memprofile", runtime.Version()+".mem.pprof", "write memory profile to file")
+		traceFile  = flag.String("trace", runtime.Version()+".trace", "write trace to file")
+	)
 	flag.Parse()
 
-	switch args := flag.Args(); len(args) {
-	case 1:
-		return generateTrace(args[0])
-	default:
-		return fmt.Errorf("expected 1 argument, but args=%v", args)
-	}
-}
-
-func generateTrace(path string) error {
 	// Create a goroutine before the trace is started and wait for it to start
 	// blocking. TODO: Await the race condition of sleep wait.
 	go blockForever()
 	time.Sleep(100 * time.Millisecond)
 
-	// Start the CPU profiler
-	if err := pprof.StartCPUProfile(io.Discard); err != nil {
-		return err
-	}
-	defer pprof.StopCPUProfile()
+	// Start the CPU profile
+	var stopCPUProfile func() error
+	stopCPUProfile, err = profile.StartCPUProfile(*cpuProfile)
+	defer func() { err = errors.Join(err, stopCPUProfile()) }()
 
-	// Create the file to write the trace to.
-	file, err := os.Create(path)
-	if err != nil {
-		return err
-	}
-	defer file.Close()
+	// Start the memory profile
+	stopMemProfile := profile.StartMemProfile(*memProfile)
+	defer func() { err = errors.Join(err, stopMemProfile()) }()
 
-	// Write the trace to the file.
-	if err := trace.Start(file); err != nil {
-		return fmt.Errorf("failed to start trace: %v", err)
-	}
-	defer trace.Stop()
+	// Start the trace
+	var stopTrace func() error
+	stopTrace, err = profile.StartTrace(*traceFile)
+	defer func() { err = errors.Join(err, stopTrace()) }()
 
 	// Create scheduling events to trace.
 	runSleep()
