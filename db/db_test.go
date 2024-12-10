@@ -85,7 +85,6 @@ func TestQueries(t *testing.T) {
 		if updateFiles {
 			require.NoError(t, os.WriteFile(tarPath, txtar.Format(updatedArchive), 0644))
 		}
-
 	}
 }
 
