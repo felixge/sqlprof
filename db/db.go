@@ -82,26 +82,27 @@ func (db *DB) Path() string {
 }
 
 // loadTrace loads a runtime/trace from r into the database.
-func (db *DB) loadTrace(ctx context.Context, r io.Reader) (rErr error) {
-	tr, err := trace.NewReader(r)
-	if err != nil {
-		return err
+func (db *DB) loadTrace(ctx context.Context, r io.Reader) (err error) {
+	var tr *trace.Reader
+	if tr, err = trace.NewReader(r); err != nil {
+		return
 	}
 
-	l, err := db.loader(ctx)
-	if err != nil {
-		return err
+	var l *loader
+	if l, err = db.loader(ctx); err != nil {
+		return
 	}
-	defer func() { rErr = errors.Join(rErr, l.Close()) }()
+	defer func() { err = errors.Join(err, l.Close()) }()
 
 	gIdx := map[trace.GoID]*gState{}
 	pIdx := map[trace.ProcID]*pState{}
 	for first := true; ; first = false {
-		ev, err := tr.ReadEvent()
-		if err == io.EOF {
+		var ev trace.Event
+		if ev, err = tr.ReadEvent(); err == io.EOF {
+			err = nil
 			break
 		} else if err != nil {
-			return err
+			return
 		}
 
 		if first {
@@ -109,19 +110,19 @@ func (db *DB) loadTrace(ctx context.Context, r io.Reader) (rErr error) {
 				`create macro rel_time_ns(abs_time_ns) AS (SELECT abs_time_ns - %v);`,
 				ev.Time(),
 			)
-			if _, err := db.ExecContext(ctx, macroSQL); err != nil {
-				return err
+			if _, err = db.ExecContext(ctx, macroSQL); err != nil {
+				return
 			}
 		}
 
 		var srcStackID uint64
 		if srcStackID, err = l.Stack(ev.Stack()); err != nil {
-			return err
+			return
 		}
 
 		switch ev.Kind() {
 		case trace.EventStackSample:
-			if err := l.Append(
+			if err = l.Append(
 				"raw_cpu_samples",
 				uint64(ev.Time()),
 				nullableStackID(srcStackID),
@@ -129,13 +130,13 @@ func (db *DB) loadTrace(ctx context.Context, r io.Reader) (rErr error) {
 				nullableResource(ev.Proc()),
 				nullableResource(ev.Thread()),
 			); err != nil {
-				return err
+				return
 			}
 		case trace.EventMetric:
 			metricEv := ev.Metric()
 			switch metricEv.Value.Kind() {
 			case trace.ValueUint64:
-				if err := l.Append(
+				if err = l.Append(
 					"raw_metrics",
 					uint64(ev.Time()),
 					metricEv.Name,
@@ -145,7 +146,7 @@ func (db *DB) loadTrace(ctx context.Context, r io.Reader) (rErr error) {
 					nullableResource(ev.Proc()),
 					nullableResource(ev.Thread()),
 				); err != nil {
-					return err
+					return
 				}
 			default:
 				return fmt.Errorf("unsupported metric value kind: %v", metricEv.Value.Kind())
@@ -154,7 +155,7 @@ func (db *DB) loadTrace(ctx context.Context, r io.Reader) (rErr error) {
 			st := ev.StateTransition()
 			var stackID uint64
 			if stackID, err = l.Stack(st.Stack); err != nil {
-				return err
+				return
 			}
 			if srcStackID == stackID {
 				srcStackID = 0
@@ -193,8 +194,8 @@ func (db *DB) loadTrace(ctx context.Context, r io.Reader) (rErr error) {
 					nullableResource(ev.Goroutine()),
 					nullableResource(ev.Thread()),
 				}
-				if err := l.Append("p_transitions", transition...); err != nil {
-					return err
+				if err = l.Append("p_transitions", transition...); err != nil {
+					return
 				}
 				p.time = ev.Time()
 			case trace.ResourceGoroutine:
@@ -221,8 +222,8 @@ func (db *DB) loadTrace(ctx context.Context, r io.Reader) (rErr error) {
 					nullableResource(ev.Thread()),
 					nullableResource(ev.Proc()),
 				}
-				if err := l.Append("raw_g_transitions", transition...); err != nil {
-					return err
+				if err = l.Append("raw_g_transitions", transition...); err != nil {
+					return
 				}
 				g.time = ev.Time()
 			}
