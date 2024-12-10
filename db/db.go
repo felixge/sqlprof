@@ -280,11 +280,11 @@ func (l *loader) GTransition(e *gTransition) error {
 		nullableString(e.Reason),
 		e.DurationNS,
 		e.EndTimeNS,
+		nullableStackID(e.StackID),
+		nullableStackID(e.SrcStackID),
 		nullableResource(e.SrcG),
 		nullableResource(e.SrcM),
 		nullableResource(e.SrcP),
-		nullableStackID(e.StackID),
-		nullableStackID(e.SrcStackID),
 	)
 }
 

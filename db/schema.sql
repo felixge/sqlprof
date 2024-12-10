@@ -5,11 +5,11 @@ CREATE TABLE raw_g_transitions (
     reason TEXT,
     duration_ns BIGINT,
     end_time_ns BIGINT,
+    stack_id UBIGINT,
+    src_stack_id UBIGINT,
     src_g BIGINT,
     src_m BIGINT,
-    src_p BIGINT,
-    stack_id UBIGINT,
-    src_stack_id UBIGINT
+    src_p BIGINT
 );
 
 CREATE TABLE p_transitions (
