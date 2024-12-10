@@ -86,7 +86,8 @@ SELECT
     coalesce(sum(duration_ns) FILTER (WHERE from_state = 'runnable'), 0) AS runnable_ns,
     coalesce(sum(duration_ns) FILTER (WHERE from_state = 'syscall'), 0) AS syscall_ns,
     coalesce(sum(duration_ns) FILTER (WHERE from_state = 'waiting'), 0) AS waiting_ns,
-    sum(duration_ns) AS total_ns
+    sum(duration_ns) AS total_ns,
+    count(*) as transitions
 FROM g_transitions
 GROUP BY 1
 ORDER BY running_ns DESC;
@@ -96,7 +97,8 @@ SELECT
     p,
     coalesce(sum(duration_ns) FILTER (WHERE from_state = 'running'), 0) AS running_ns,
     coalesce(sum(duration_ns) FILTER (WHERE from_state = 'idle'), 0) AS idle_ns,
-    sum(duration_ns) AS total_ns
+    sum(duration_ns) AS total_ns,
+    count(*) as transitions
 FROM p_transitions
 GROUP BY 1
 ORDER BY running_ns DESC;
@@ -109,7 +111,8 @@ SELECT
     sum(syscall_ns) AS syscall_ns,
     sum(waiting_ns) AS waiting_ns,
     sum(total_ns) AS total_ns,
-    count(*) AS count
+    sum(transitions) as transitions,
+    count(*) AS count,
 FROM goroutines
 GROUP BY 1
 ORDER BY running_ns DESC, name;
