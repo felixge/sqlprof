@@ -25,15 +25,15 @@ order by end_time_ns
 asc limit 10;
 -- block.txt --
 ../testdata/testprog/go1.23.3.trace:
-+----+--------------+----------+-----------------------+-------------+-----------------+------------------------------------------------------------------------------------+-------+------------+-------+-------------------------------------------------------------+
-| g  |  from_state  | to_state |        reason         | duration_ns |   end_time_ns   |                                       stack                                        | src_g |   src_m    | src_p |                          src_stack                          |
-+----+--------------+----------+-----------------------+-------------+-----------------+------------------------------------------------------------------------------------+-------+------------+-------+-------------------------------------------------------------+
-| 33 | running      | waiting  | chan receive          |        6592 | 956301026689856 | [runtime.chanrecv1 runtime.(*wakeableSleep).sleep runtime.traceStartReadCPU.func1] |    33 | 6129643520 |     0 | <nil>                                                       |
-| 35 | running      | waiting  | system goroutine wait |        1728 | 956301026823040 | [runtime/trace.Start.func1]                                                        |    35 | 6129643520 |     0 | <nil>                                                       |
-|  1 | running      | waiting  | sleep                 |     1151552 | 956301027715520 | [time.Sleep main.runSleep main.generateTrace main.run main.main]                   |     1 | 8674447168 |     2 | <nil>                                                       |
-|  2 | undetermined | waiting  | <nil>                 |           0 | 956302027914816 | <nil>                                                                              | <nil> | <nil>      | <nil> | [runtime.gopark runtime.goparkunlock runtime.forcegchelper] |
-| 34 | running      | waiting  | sync                  |      194301 | 956302028109376 | [runtime.traceAdvance runtime.(*traceAdvancerState).start.func1]                   |    34 | 6130790400 |     1 | <nil>                                                       |
-+----+--------------+----------+-----------------------+-------------+-----------------+------------------------------------------------------------------------------------+-------+------------+-------+-------------------------------------------------------------+
++----+--------------+----------+-----------------------+-------------+-----------------+------------------------------------------------------------------------------------+-------+------------+-------+-----------+
+| g  |  from_state  | to_state |        reason         | duration_ns |   end_time_ns   |                                       stack                                        | src_g |   src_m    | src_p | src_stack |
++----+--------------+----------+-----------------------+-------------+-----------------+------------------------------------------------------------------------------------+-------+------------+-------+-----------+
+| 33 | running      | waiting  | chan receive          |        6592 | 956301026689856 | [runtime.chanrecv1 runtime.(*wakeableSleep).sleep runtime.traceStartReadCPU.func1] |    33 | 6129643520 |     0 | <nil>     |
+| 35 | running      | waiting  | system goroutine wait |        1728 | 956301026823040 | [runtime/trace.Start.func1]                                                        |    35 | 6129643520 |     0 | <nil>     |
+|  1 | running      | waiting  | sleep                 |     1151552 | 956301027715520 | [time.Sleep main.runSleep main.generateTrace main.run main.main]                   |     1 | 8674447168 |     2 | <nil>     |
+|  2 | undetermined | waiting  | <nil>                 |           0 | 956302027914816 | [runtime.gopark runtime.goparkunlock runtime.forcegchelper]                        | <nil> | <nil>      | <nil> | <nil>     |
+| 34 | running      | waiting  | sync                  |      194301 | 956302028109376 | [runtime.traceAdvance runtime.(*traceAdvancerState).start.func1]                   |    34 | 6130790400 |     1 | <nil>     |
++----+--------------+----------+-----------------------+-------------+-----------------+------------------------------------------------------------------------------------+-------+------------+-------+-----------+
 -- unblock.sql --
 select *
 from g_transitions

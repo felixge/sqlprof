@@ -130,6 +130,17 @@ func (db *DB) loadTrace(ctx context.Context, r io.Reader) (rErr error) {
 				srcStackID = 0
 			}
 
+			// Goroutines that produce no events during a generation are listed
+			// with a traceEvGoStatusStack event at the end of it. This event
+			// is produced with a triggering G, M, P and has a stack but no
+			// transition stack. IMO it should be the other way around, but for
+			// now we work around this here. See traceEvGoStatusStack.sql test
+			// in testdata/queries/invariants.txtar.sql.
+			// TODO: File upstream issue and CL for this.
+			if srcStackID != 0 && stackID == 0 && ev.Goroutine() == trace.NoGoroutine {
+				srcStackID, stackID = stackID, srcStackID
+			}
+
 			switch st.Resource.Kind {
 			case trace.ResourceProc:
 				from, to := st.Proc()
