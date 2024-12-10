@@ -27,6 +27,11 @@ func run() error {
 }
 
 func generateTrace(path string) error {
+	// Create a goroutine before the trace is started and wait for it to start
+	// blocking. TODO: Await the race condition of sleep wait.
+	go blockForever()
+	time.Sleep(100 * time.Millisecond)
+
 	// Create the file to write the trace to.
 	file, err := os.Create(path)
 	if err != nil {
@@ -45,6 +50,10 @@ func generateTrace(path string) error {
 	chanUnblock()
 
 	return nil
+}
+
+func blockForever() {
+	select {}
 }
 
 func chanUnblock() {
