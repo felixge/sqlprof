@@ -77,10 +77,20 @@ select
     raw_g_transitions.src_g,
     raw_g_transitions.src_m,
     raw_g_transitions.src_p
-
 from raw_g_transitions
 left join stacks on raw_g_transitions.stack_id = stacks.stack_id
 left join stacks as src_stacks on raw_g_transitions.src_stack_id = src_stacks.stack_id;
+
+create view cpu_samples as
+select
+    raw_cpu_samples.end_time_ns,
+    raw_cpu_samples.stack_id,
+    stacks.functions AS stack,
+    raw_cpu_samples.g,
+    raw_cpu_samples.p,
+    raw_cpu_samples.m
+from raw_cpu_samples
+left join stacks using (stack_id);
 
 create view goroutines as
 select
