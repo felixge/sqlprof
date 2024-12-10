@@ -179,19 +179,17 @@ func (db *DB) loadTrace(ctx context.Context, r io.Reader) (rErr error) {
 				} else {
 					dt = ev.Time() - p.time
 				}
-				transition := &pTransition{
-					P:          procID,
-					StackID:    srcStackID,
-					EndTimeNS:  uint64(ev.Time()),
-					DurationNS: uint64(dt),
-					SrcG:       ev.Goroutine(),
-					SrcP:       ev.Proc(),
-					SrcM:       ev.Thread(),
-					FromState:  strings.ToLower(from.String()),
-					ToState:    strings.ToLower(to.String()),
-					Reason:     st.Reason,
+				transition := []driver.Value{
+					nullableResource(procID),
+					strings.ToLower(from.String()),
+					strings.ToLower(to.String()),
+					uint64(dt),
+					uint64(ev.Time()),
+					nullableResource(ev.Proc()),
+					nullableResource(ev.Goroutine()),
+					nullableResource(ev.Thread()),
 				}
-				if err := l.PTransition(transition); err != nil {
+				if err := l.Append("p_transitions", transition...); err != nil {
 					return err
 				}
 				p.time = ev.Time()
@@ -332,19 +330,6 @@ func (l *loader) GTransition(e *gTransition) error {
 	)
 }
 
-func (l *loader) PTransition(e *pTransition) error {
-	return l.appenders["p_transitions"].AppendRow(
-		nullableResource(e.P),
-		e.FromState,
-		e.ToState,
-		e.DurationNS,
-		e.EndTimeNS,
-		nullableResource(e.SrcP),
-		nullableResource(e.SrcG),
-		nullableResource(e.SrcM),
-	)
-}
-
 func (l *loader) Stack(s trace.Stack) (stackID uint64, err error) {
 	if s == trace.NoStack {
 		return 0, nil
@@ -457,19 +442,6 @@ type gTransition struct {
 	ToState    string
 	Reason     string
 	SrcStackID uint64
-	StackID    uint64
-}
-
-type pTransition struct {
-	P          trace.ProcID
-	EndTimeNS  uint64
-	DurationNS uint64
-	SrcG       trace.GoID
-	SrcP       trace.ProcID
-	SrcM       trace.ThreadID
-	FromState  string
-	ToState    string
-	Reason     string
 	StackID    uint64
 }
 
