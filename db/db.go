@@ -204,20 +204,20 @@ func (db *DB) loadTrace(ctx context.Context, r io.Reader) (rErr error) {
 				} else {
 					dt = ev.Time() - g.time
 				}
-				transition := &gTransition{
-					G:          goID,
-					EndTimeNS:  uint64(ev.Time()),
-					DurationNS: uint64(dt),
-					SrcG:       ev.Goroutine(),
-					SrcP:       ev.Proc(),
-					SrcM:       ev.Thread(),
-					FromState:  strings.ToLower(from.String()),
-					ToState:    strings.ToLower(to.String()),
-					Reason:     st.Reason,
-					StackID:    stackID,
-					SrcStackID: srcStackID,
+				transition := []driver.Value{
+					nullableResource(goID),
+					strings.ToLower(from.String()),
+					strings.ToLower(to.String()),
+					nullableString(st.Reason),
+					uint64(dt),
+					uint64(ev.Time()),
+					nullableStackID(stackID),
+					nullableStackID(srcStackID),
+					nullableResource(ev.Goroutine()),
+					nullableResource(ev.Thread()),
+					nullableResource(ev.Proc()),
 				}
-				if err := l.GTransition(transition); err != nil {
+				if err := l.Append("raw_g_transitions", transition...); err != nil {
 					return err
 				}
 				g.time = ev.Time()
@@ -311,23 +311,6 @@ func (l *loader) Append(table string, args ...driver.Value) (err error) {
 		l.appenders[table] = appender
 	}
 	return appender.AppendRow(args...)
-}
-
-// GTransition appends an transition to the database.
-func (l *loader) GTransition(e *gTransition) error {
-	return l.appenders["raw_g_transitions"].AppendRow(
-		nullableResource(e.G),
-		e.FromState,
-		e.ToState,
-		nullableString(e.Reason),
-		e.DurationNS,
-		e.EndTimeNS,
-		nullableStackID(e.StackID),
-		nullableStackID(e.SrcStackID),
-		nullableResource(e.SrcG),
-		nullableResource(e.SrcM),
-		nullableResource(e.SrcP),
-	)
 }
 
 func (l *loader) Stack(s trace.Stack) (stackID uint64, err error) {
@@ -429,20 +412,6 @@ type stack struct {
 type stackKey struct {
 	Lo uint64
 	Hi uint64
-}
-
-type gTransition struct {
-	G          trace.GoID
-	EndTimeNS  uint64
-	DurationNS uint64
-	SrcG       trace.GoID
-	SrcP       trace.ProcID
-	SrcM       trace.ThreadID
-	FromState  string
-	ToState    string
-	Reason     string
-	SrcStackID uint64
-	StackID    uint64
 }
 
 // newStackKey returns a new StackKey for the given frames. The key is the
