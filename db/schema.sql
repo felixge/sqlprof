@@ -63,11 +63,11 @@ SELECT
     raw_g_transitions.end_time_ns,
     raw_g_transitions.stack_id,
     stacks.functions AS stack,
+    raw_g_transitions.src_stack_id,
+    src_stacks.functions AS src_stack,
     raw_g_transitions.src_g,
     raw_g_transitions.src_m,
-    raw_g_transitions.src_p,
-    raw_g_transitions.src_stack_id,
-    src_stacks.functions AS src_stack
+    raw_g_transitions.src_p
 
 FROM raw_g_transitions
 LEFT JOIN stacks ON raw_g_transitions.stack_id = stacks.stack_id
