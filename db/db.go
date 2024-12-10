@@ -121,14 +121,14 @@ func (db *DB) loadTrace(ctx context.Context, r io.Reader) (rErr error) {
 
 		switch ev.Kind() {
 		case trace.EventStackSample:
-			sample := &cpuSample{
-				EndTimeNS: uint64(ev.Time()),
-				StackID:   srcStackID,
-				G:         ev.Goroutine(),
-				P:         ev.Proc(),
-				M:         ev.Thread(),
-			}
-			if err := l.CPUSample(sample); err != nil {
+			if err := l.Append(
+				"raw_cpu_samples",
+				uint64(ev.Time()),
+				nullableStackID(srcStackID),
+				nullableResource(ev.Goroutine()),
+				nullableResource(ev.Proc()),
+				nullableResource(ev.Thread()),
+			); err != nil {
 				return err
 			}
 		case trace.EventMetric:
@@ -345,16 +345,6 @@ func (l *loader) PTransition(e *pTransition) error {
 	)
 }
 
-func (l *loader) CPUSample(s *cpuSample) error {
-	return l.appenders["raw_cpu_samples"].AppendRow(
-		s.EndTimeNS,
-		nullableStackID(s.StackID),
-		nullableResource(s.G),
-		nullableResource(s.P),
-		nullableResource(s.M),
-	)
-}
-
 func (l *loader) Stack(s trace.Stack) (stackID uint64, err error) {
 	if s == trace.NoStack {
 		return 0, nil
@@ -481,14 +471,6 @@ type pTransition struct {
 	ToState    string
 	Reason     string
 	StackID    uint64
-}
-
-type cpuSample struct {
-	EndTimeNS uint64
-	StackID   uint64
-	G         trace.GoID
-	P         trace.ProcID
-	M         trace.ThreadID
 }
 
 // newStackKey returns a new StackKey for the given frames. The key is the
