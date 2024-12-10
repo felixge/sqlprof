@@ -3,7 +3,9 @@ package main
 import (
 	"flag"
 	"fmt"
+	"io"
 	"os"
+	"runtime/pprof"
 	"runtime/trace"
 	"time"
 )
@@ -31,6 +33,12 @@ func generateTrace(path string) error {
 	// blocking. TODO: Await the race condition of sleep wait.
 	go blockForever()
 	time.Sleep(100 * time.Millisecond)
+
+	// Start the CPU profiler
+	if err := pprof.StartCPUProfile(io.Discard); err != nil {
+		return err
+	}
+	defer pprof.StopCPUProfile()
 
 	// Create the file to write the trace to.
 	file, err := os.Create(path)
