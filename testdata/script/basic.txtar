@@ -1,16 +1,16 @@
-# Pass SQL query on command line
+# trace: Pass SQL query on command line
 exec sqlprof testdata/testprog/go1.23.3.trace 'SELECT count(*) FROM goroutines'
 cmp stdout non-interactive.stdout.txt
 
-# Multiple inputs. Using the same trace since output order is not guaranteed.
+# trace: Multiple inputs. Using the same trace since output order is not guaranteed.
 exec sqlprof testdata/testprog/go1.23.3.trace testdata/testprog/go1.23.3.trace 'SELECT count(*) FROM goroutines'
 cmp stdout two-traces.non-interactive.stdout.txt
 
-# CSV Output format
+# trace: CSV Output format
 exec sqlprof -format csv testdata/testprog/go1.23.3.trace 'SELECT * FROM goroutines ORDER BY g LIMIT 3'
 cmp stdout non-interactive-csv.stdout.txt
 
-# Pass SQL query via stdin (interactive mode)
+# trace: Pass SQL query via stdin (interactive mode)
 stdin interactive.stdin.txt
 exec sqlprof testdata/testprog/go1.23.3.trace
 cmp stdout interactive.stdout.txt
@@ -19,20 +19,20 @@ cmp stdout interactive.stdout.txt
 +--------------+
 | count_star() |
 +--------------+
-|            9 |
+|           21 |
 +--------------+
 -- two-traces.non-interactive.stdout.txt --
 +--------------+
 | count_star() |
 +--------------+
-|            9 |
-|            9 |
+|           21 |
+|           21 |
 +--------------+
 -- non-interactive-csv.stdout.txt --
-g,name,is_system_goroutine,running_ns,runnable_ns,syscall_ns,waiting_ns,total_ns
-1,main.main,false,4948245498,2555846,0,5049519808,10000321152
-2,runtime.forcegchelper,true,0,0,0,8999809024,8999809024
-3,runtime.bgsweep,true,0,0,0,8999809280,8999809280
+g,name,is_system_goroutine,running_ns,runnable_ns,syscall_ns,waiting_ns,total_ns,transitions
+1,main.main,false,4948948800,2008640,0,5050139968,10001097408,744
+2,runtime.forcegchelper,true,0,0,0,8999850240,8999850240,10
+3,main.chanUnblock.func1,false,1344,8512,0,10975424,10985280,6
 -- interactive.stdin.txt --
 SELECT count(*) FROM goroutines
 -- interactive.stdout.txt --
@@ -40,5 +40,5 @@ SELECT count(*) FROM goroutines
 │ count_star() │
 │    int64     │
 ├──────────────┤
-│            9 │
+│           21 │
 └──────────────┘
