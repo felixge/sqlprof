@@ -36,7 +36,7 @@ func TestQueries(t *testing.T) {
 		require.NoError(t, err)
 	}
 
-	tarPaths, err := filepath.Glob(filepath.Join("..", "testdata/queries/*.txtar"))
+	tarPaths, err := filepath.Glob(filepath.Join("..", "testdata/queries/*.txtar.sql"))
 	require.NoError(t, err)
 	for _, tarPath := range tarPaths {
 		archive, err := txtar.ParseFile(tarPath)
