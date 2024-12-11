@@ -53,7 +53,8 @@ create table frames (
     frame_id ubigint,
     address ubigint,
     function_id ubigint,
-    line ubigint
+    line ubigint,
+    inlined bool
 );
 
 create table functions (
@@ -66,10 +67,8 @@ create view stacks as
 select
     stack_id,
     array_agg(functions.name order by stack_frames.position) as funcs,
-    array_agg(concat(functions.name, ' (', concat(regexp_extract(functions.file, '[^/]+$'), ':', frames.line), ')') order by stack_frames.position) as frames,
-    array_agg(functions.file order by stack_frames.position) as files,
-    array_agg(frames.line order by stack_frames.position) as lines,
-    array_agg(frames.frame_id order by stack_frames.position) as frame_ids
+    array_agg(concat(functions.name, ' (', concat(regexp_extract(functions.file, '[^/]+$'), ':', frames.line), ')') order by stack_frames.position) as terse,
+    array_agg(concat(functions.name, case when frames.inlined then ' [inlined]' else '' end, ' (', concat(functions.file, ':', frames.line), ')') order by stack_frames.position) as full
 from stack_frames
 join frames using (frame_id)
 join functions using (function_id)

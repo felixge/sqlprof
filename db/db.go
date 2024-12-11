@@ -126,7 +126,7 @@ func (db *DB) loadTrace(ctx context.Context, r io.Reader) (err error) {
 		}
 
 		var srcStackID uint64
-		if srcStackID, err = l.Stack(ev.Stack()); err != nil {
+		if srcStackID, err = l.Stack(traceFrameSource{ev.Stack()}); err != nil {
 			return
 		}
 
@@ -166,7 +166,7 @@ func (db *DB) loadTrace(ctx context.Context, r io.Reader) (err error) {
 		case trace.EventStateTransition:
 			st := ev.StateTransition()
 			var stackID uint64
-			if stackID, err = l.Stack(st.Stack); err != nil {
+			if stackID, err = l.Stack(traceFrameSource{st.Stack}); err != nil {
 				return
 			}
 			if srcStackID == stackID {
@@ -258,7 +258,7 @@ func (db *DB) loadPPROF(ctx context.Context, r io.Reader) (err error) {
 
 	for _, s := range prof.Sample {
 		var srcStackID uint64
-		if srcStackID, err = l.Stack(&pprofFrameSource{s.Location}); err != nil {
+		if srcStackID, err = l.Stack(pprofFrameSource{s.Location}); err != nil {
 			return
 		}
 
@@ -280,19 +280,44 @@ func (db *DB) loadPPROF(ctx context.Context, r io.Reader) (err error) {
 	return nil
 }
 
+type traceFrameSource struct {
+	stack trace.Stack
+}
+
+func (t traceFrameSource) IsNone() bool {
+	return t.stack == trace.NoStack
+}
+
+func (t traceFrameSource) Frames(fn func(stackFrame) bool) bool {
+	var frame stackFrame
+	t.stack.Frames(func(f trace.StackFrame) bool {
+		frame.StackFrame = f
+		return fn(frame)
+	})
+	return true
+}
+
 type pprofFrameSource struct {
 	locations []*profile.Location
 }
 
-func (p *pprofFrameSource) Frames(fn func(trace.StackFrame) bool) bool {
-	var frame trace.StackFrame
+func (p pprofFrameSource) IsNone() bool {
+	return p.locations == nil
+}
+
+func (p pprofFrameSource) Frames(fn func(stackFrame) bool) bool {
+	var frame stackFrame
 	for _, loc := range p.locations {
-		for _, line := range loc.Line {
-			frame = trace.StackFrame{
+		for i, line := range loc.Line {
+			frame.StackFrame = trace.StackFrame{
 				PC:   loc.Address,
 				Func: line.Function.Name,
 				File: line.Function.Filename,
 				Line: uint64(line.Line),
+			}
+			frame.Inlined = inlinedYes
+			if i+1 == len(loc.Line) {
+				frame.Inlined = inlinedNo
 			}
 			if !fn(frame) {
 				return false
@@ -307,6 +332,19 @@ func nullableString(v string) any {
 		return nil
 	}
 	return v
+}
+
+func nullableInlined(v inlined) any {
+	switch v {
+	case inlinedYes:
+		return true
+	case inlinedNo:
+		return false
+	case inlinedUnknown:
+		return nil
+	default:
+		panic(fmt.Sprintf("unknown inlined value: %v", v))
+	}
 }
 
 func nullableResource[T trace.ProcID | trace.GoID | trace.ThreadID](v T) any {
@@ -368,16 +406,30 @@ func (l *loader) Append(table string, args ...driver.Value) (err error) {
 }
 
 type frameSource interface {
-	Frames(func(trace.StackFrame) bool) bool
+	IsNone() bool
+	Frames(func(stackFrame) bool) bool
 }
 
+type stackFrame struct {
+	trace.StackFrame
+	Inlined inlined
+}
+
+type inlined int
+
+const (
+	inlinedUnknown inlined = iota
+	inlinedYes
+	inlinedNo
+)
+
 func (l *loader) Stack(s frameSource) (stackID uint64, err error) {
-	if s == trace.NoStack {
+	if s.IsNone() {
 		return 0, nil
 	}
 
 	var frames []*frameRow
-	s.Frames(func(f trace.StackFrame) bool {
+	s.Frames(func(f stackFrame) bool {
 		fnKey := functionKey{Name: f.Func, File: f.File}
 		fn, ok := l.funcIdx[fnKey]
 		if !ok {
@@ -392,7 +444,7 @@ func (l *loader) Stack(s frameSource) (stackID uint64, err error) {
 				return false
 			}
 		}
-		frameKey := frameKey{Address: f.PC, Function: fn, Line: f.Line}
+		frameKey := frameKey{Address: f.PC, Function: fn, Line: f.Line, Inlined: f.Inlined}
 		frame, ok := l.frameIdx[frameKey]
 		if !ok {
 			frame = &frameRow{FrameID: uint64(len(l.frameIdx) + 1), frameKey: frameKey}
@@ -403,6 +455,7 @@ func (l *loader) Stack(s frameSource) (stackID uint64, err error) {
 				frame.Address,
 				frame.Function.FunctionID,
 				frame.Line,
+				nullableInlined(frame.Inlined), // inlined
 			); err != nil {
 				return false
 			}
@@ -453,6 +506,7 @@ type frameKey struct {
 	Address  uint64
 	Function *functionRow
 	Line     uint64
+	Inlined  inlined
 }
 
 type functionRow struct {
