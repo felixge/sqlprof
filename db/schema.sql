@@ -31,14 +31,14 @@ create table raw_cpu_samples (
     m bigint
 );
 
-create table raw_metrics (
+create table metrics (
     end_time_ns bigint,
     name text,
     value bigint,
-    stack_id ubigint,
-    g bigint,
-    p bigint,
-    m bigint
+    src_stack_id ubigint,
+    src_g bigint,
+    src_p bigint,
+    src_m bigint
 );
 
 create table stack_frames (
@@ -150,17 +150,3 @@ select
 from goroutines
 group by 1
 order by running_ns desc, name;
-
-create view metrics as
-select
-    end_time_ns,
-    name,
-    value,
-    stack_id,
-    funcs,
-    g,
-    p,
-    m
-from raw_metrics
-left join stacks using (stack_id)
-order by end_time_ns;

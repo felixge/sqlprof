@@ -137,7 +137,7 @@ func (db *DB) loadTrace(ctx context.Context, r io.Reader) (err error) {
 			switch metricEv.Value.Kind() {
 			case trace.ValueUint64:
 				if err = l.Append(
-					"raw_metrics",
+					"metrics",
 					uint64(ev.Time()),
 					metricEv.Name,
 					int64(metricEv.Value.Uint64()),
