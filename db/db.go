@@ -12,6 +12,7 @@ import (
 	"io"
 	"strings"
 
+	"github.com/google/pprof/profile"
 	"github.com/marcboeker/go-duckdb"
 	"golang.org/x/exp/trace"
 )
@@ -37,17 +38,6 @@ type Profile struct {
 
 // Create creates a new duckdb at the given path and loads the profile into it.
 func Create(duckPath string, p Profile) (*DB, error) {
-	switch p.Kind {
-	case ProfileKindTrace:
-		return createTrace(duckPath, p.Data)
-	case ProfileKindPPROF:
-		return nil, fmt.Errorf("not implemented: kind=%q", p.Kind)
-	default:
-		return nil, fmt.Errorf("invalid profile: kind=%q", p.Kind)
-	}
-}
-
-func createTrace(duckPath string, r io.Reader) (*DB, error) {
 	connector, err := duckdb.NewConnector(duckPath, nil)
 	if err != nil {
 		return nil, err
@@ -64,8 +54,18 @@ func createTrace(duckPath string, r io.Reader) (*DB, error) {
 	} else if _, err := db.Exec(string(b)); err != nil {
 		return nil, errors.Join(err, db.Close())
 	}
-	if err := db.loadTrace(context.Background(), r); err != nil {
-		return nil, errors.Join(err, db.Close())
+
+	switch p.Kind {
+	case ProfileKindTrace:
+		if err := db.loadTrace(context.Background(), p.Data); err != nil {
+			return nil, err
+		}
+	case ProfileKindPPROF:
+		if err := db.loadPPROF(context.Background(), p.Data); err != nil {
+			return nil, err
+		}
+	default:
+		return nil, fmt.Errorf("invalid profile: kind=%q", p.Kind)
 	}
 	return db, nil
 }
@@ -232,6 +232,37 @@ func (db *DB) loadTrace(ctx context.Context, r io.Reader) (err error) {
 		}
 	}
 	return
+}
+
+func (db *DB) loadPPROF(ctx context.Context, r io.Reader) (err error) {
+	var prof *profile.Profile
+	if prof, err = profile.Parse(r); err != nil {
+		return
+	}
+
+	var l *loader
+	if l, err = db.loader(ctx); err != nil {
+		return
+	}
+	defer func() { err = errors.Join(err, l.Close()) }()
+
+	for _, s := range prof.Sample {
+		for i, st := range prof.SampleType {
+			if err = l.Append(
+				"stack_samples",
+				st.Type+"/"+st.Unit,
+				nil, //nullableStackID(srcStackID),
+				s.Value[i],
+				nil, // time
+				nil, // src_g
+				nil, // src_p
+				nil, // src_m
+			); err != nil {
+				return
+			}
+		}
+	}
+	return nil
 }
 
 func nullableString(v string) any {

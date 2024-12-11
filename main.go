@@ -9,6 +9,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strings"
 
 	"github.com/felixge/sqlprof/db"
 	"github.com/felixge/sqlprof/db/dbutil"
@@ -126,12 +127,13 @@ func runQuery(format string, paths []string, query string) (err error) {
 	return p.Wait()
 }
 
-func loadProfile(profilePath string) (*db.DB, error) {
+func loadProfile(profilePath string) (d *db.DB, err error) {
 	// Open the profile file.
-	profileReader, err := os.Open(profilePath)
-	if err != nil {
+	var profileFile *os.File
+	if profileFile, err = os.Open(profilePath); err != nil {
 		return nil, fmt.Errorf("failed to open profile: path=%q err=%w", profilePath, err)
 	}
+	defer func() { err = errors.Join(err, profileFile.Close()) }()
 
 	// Determine the location for creating the temporary duckdb database.
 	duckPath := duckTempPath(profilePath)
@@ -141,14 +143,13 @@ func loadProfile(profilePath string) (*db.DB, error) {
 
 	// Load the profile into the database.
 	profile := db.Profile{
-		Kind: db.ProfileKindTrace, // TODO: Support pprof profiles.
-		Data: profileReader,
+		Kind: guessFileType(profileFile),
+		Data: profileFile,
 	}
-	db, err := db.Create(duckPath, profile)
-	if err != nil {
+	if d, err = db.Create(duckPath, profile); err != nil {
 		return nil, fmt.Errorf("failed to create duckdb: path=%q err=%w", duckPath, err)
 	}
-	return db, nil
+	return d, nil
 }
 
 // duckTempPath returns a temporary path for a duckdb database file. The same
@@ -157,4 +158,14 @@ func duckTempPath(path string) string {
 	dir := os.TempDir()
 	name := fmt.Sprintf("sqlprof_%x.duckdb", sha256.Sum256([]byte(path)))
 	return filepath.Join(dir, name)
+}
+
+func guessFileType(f *os.File) db.ProfileKind {
+	// TODO: make this more robust.
+	switch {
+	case strings.HasSuffix(f.Name(), ".pprof"):
+		return db.ProfileKindPPROF
+	default:
+		return db.ProfileKindTrace
+	}
 }

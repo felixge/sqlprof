@@ -1,3 +1,7 @@
+# pprof: Pass SQL query on command line
+exec sqlprof testdata/testprog/go1.23.3.cpu.pprof 'SELECT count(*) FROM stack_samples'
+cmp stdout pprof.non-interactive.stdout.txt
+
 # trace: Pass SQL query on command line
 exec sqlprof testdata/testprog/go1.23.3.trace 'SELECT count(*) FROM goroutines'
 cmp stdout non-interactive.stdout.txt
@@ -15,6 +19,12 @@ stdin interactive.stdin.txt
 exec sqlprof testdata/testprog/go1.23.3.trace
 cmp stdout interactive.stdout.txt
 
+-- pprof.non-interactive.stdout.txt --
++--------------+
+| count_star() |
++--------------+
+|           44 |
++--------------+
 -- non-interactive.stdout.txt --
 +--------------+
 | count_star() |
