@@ -83,6 +83,13 @@ join frames using (frame_id)
 join functions using (function_id)
 group by stack_id;
 
+
+create or replace macro labels(_label_set_id) as (
+    select map_from_entries(array_agg({'k': key, 'v': case when str_val is not null then str_val else num_val::text end}))
+    from label_sets
+    where label_set_id = _label_set_id
+);
+
 create or replace macro funcs(_stack_id) as (
     select funcs
     from stacks
