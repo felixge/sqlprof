@@ -222,7 +222,7 @@ func (db *DB) loadTrace(ctx context.Context, r io.Reader) (err error) {
 					nullableResource(ev.Thread()),
 					nullableResource(ev.Proc()),
 				}
-				if err = l.Append("raw_g_transitions", transition...); err != nil {
+				if err = l.Append("g_transitions", transition...); err != nil {
 					return
 				}
 				g.time = ev.Time()

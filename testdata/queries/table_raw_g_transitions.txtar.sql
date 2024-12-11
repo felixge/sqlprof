@@ -1,5 +1,5 @@
 -- sample.sql --
-select distinct on (from_state, to_state, reason) * from raw_g_transitions order by end_time_ns asc;
+select distinct on (from_state, to_state, reason) * from g_transitions order by end_time_ns asc;
 -- sample.txt --
 ../testdata/testprog/go1.23.3.trace:
 +----+--------------+----------+----------------------------+-------------+-----------------+----------+--------------+-------+------------+-------+
@@ -34,7 +34,7 @@ select
     min(end_time_ns),
     max(end_time_ns),
     sum(end_time_ns)
-from raw_g_transitions;
+from g_transitions;
 -- aggregate.txt --
 ../testdata/testprog/go1.23.3.trace:
 +------------------+------------------+------------------+------------------+------------------+---------------------+
@@ -43,7 +43,7 @@ from raw_g_transitions;
 |                0 |       2002647936 |     188913758976 |  981359936358784 |  981369937483328 | 1798841346108486097 |
 +------------------+------------------+------------------+------------------+------------------+---------------------+
 -- reason.sql --
-select distinct reason from raw_g_transitions order by 1;
+select distinct reason from g_transitions order by 1;
 -- reason.txt --
 ../testdata/testprog/go1.23.3.trace:
 +----------------------------+

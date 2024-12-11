@@ -1,4 +1,4 @@
-create table raw_g_transitions (
+create table g_transitions (
     g bigint,
     from_state text,
     to_state text,
@@ -73,24 +73,29 @@ join frames using (frame_id)
 join functions using (function_id)
 group by stack_id;
 
-create view g_transitions as
-select
-    raw_g_transitions.g,
-    raw_g_transitions.from_state,
-    raw_g_transitions.to_state,
-    raw_g_transitions.reason,
-    raw_g_transitions.duration_ns,
-    raw_g_transitions.end_time_ns,
-    raw_g_transitions.stack_id,
-    stacks.funcs as stack_funcs,
-    raw_g_transitions.src_stack_id,
-    src_stacks.funcs as src_stack_funcs,
-    raw_g_transitions.src_g,
-    raw_g_transitions.src_m,
-    raw_g_transitions.src_p
-from raw_g_transitions
-left join stacks on raw_g_transitions.stack_id = stacks.stack_id
-left join stacks as src_stacks on raw_g_transitions.src_stack_id = src_stacks.stack_id;
+create or replace macro funcs(_stack_id) as (
+    select funcs
+    from stacks
+    where stack_id = _stack_id
+);
+
+create or replace macro root_func(_stack_id) as (
+    select funcs[len(funcs):][1]
+    from stacks
+    where stack_id = _stack_id
+);
+
+create or replace macro leaf_func(_stack_id) as (
+    select funcs[1]
+    from stacks
+    where stack_id = _stack_id
+);
+
+create or replace macro stack(_stack_id) as (
+    select stacks
+    from stacks
+    where stack_id = _stack_id
+);
 
 create view cpu_samples as
 select
@@ -107,9 +112,9 @@ create view goroutines as
 select
     g,
     coalesce(
-        first(stack_funcs[len(stack_funcs):] order by end_time_ns) filter (where stack_funcs is not null),
-        first(src_stack_funcs[len(src_stack_funcs):] order by end_time_ns) filter (where src_stack_funcs is not null)
-    )[1] as name,
+        first(root_func(stack_id) order by end_time_ns) filter (where stack_id is not null),
+        first(root_func(src_stack_id) order by end_time_ns) filter (where src_stack_id is not null)
+    ) as name,
     bool_or(reason = 'system goroutine wait') or name like 'runtime.%' as is_system_goroutine,
     coalesce(sum(duration_ns) filter (where from_state = 'running'), 0) as running_ns,
     coalesce(sum(duration_ns) filter (where from_state = 'runnable'), 0) as runnable_ns,
@@ -159,15 +164,3 @@ select
 from raw_metrics
 left join stacks using (stack_id)
 order by end_time_ns;
-
-create or replace macro stack(id, mode := 'funcs') as (
-    select case mode
-        when 'funcs' then funcs
-        when 'frames' then frames
-        when 'files' then files
-        when 'lines' then lines::text[]
-        when 'frame_ids' then frame_ids::text[]
-    end
-    from stacks
-    where stack_id = id
-);
