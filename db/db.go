@@ -280,6 +280,28 @@ func (db *DB) loadPPROF(ctx context.Context, r io.Reader) (err error) {
 	return nil
 }
 
+func sampleLabelSets(s *profile.Sample, fn func(label) error) error {
+	for key, vals := range s.Label {
+		for _, val := range vals {
+			if err := fn(label{Key: key, StrVal: val}); err != nil {
+				return err
+			}
+		}
+	}
+	for key, vals := range s.NumLabel {
+		for i, val := range vals {
+			ls := label{Key: key, NumVal: val}
+			if units, ok := s.NumUnit[key]; ok && i < len(units) {
+				ls.NumUnit = units[i]
+			}
+			if err := fn(ls); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
 type traceFrameSource struct {
 	stack trace.Stack
 }
@@ -387,11 +409,12 @@ func (db *DB) loader(ctx context.Context) (*loader, error) {
 }
 
 type loader struct {
-	conn      driver.Conn
-	funcIdx   map[functionKey]*functionRow
-	frameIdx  map[frameKey]*frameRow
-	stackIdx  map[stackKey]*stack
-	appenders map[string]*duckdb.Appender
+	conn        driver.Conn
+	funcIdx     map[functionKey]*functionRow
+	frameIdx    map[frameKey]*frameRow
+	stackIdx    map[stackKey]*stack
+	appenders   map[string]*duckdb.Appender
+	labelSetIdx uint64
 }
 
 func (l *loader) Append(table string, args ...driver.Value) (err error) {
@@ -489,6 +512,11 @@ func (l *loader) Stack(s frameSource) (stackID uint64, err error) {
 	return stk.StackID, nil
 }
 
+func (l *loader) LabelSet(ls []label) (uint64, error) {
+	l.labelSetIdx++
+	return 0, nil
+}
+
 func (l *loader) Close() error {
 	var err error
 	for _, a := range l.appenders {
@@ -527,6 +555,13 @@ type stack struct {
 type stackKey struct {
 	Lo uint64
 	Hi uint64
+}
+
+type label struct {
+	Key     string
+	StrVal  string
+	NumVal  int64
+	NumUnit string
 }
 
 // newStackKey returns a new StackKey for the given frames. The key is the

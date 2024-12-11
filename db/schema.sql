@@ -57,6 +57,13 @@ create table frames (
     inlined bool
 );
 
+create table label_sets (
+    label_set_id ubigint,
+    key text,
+    val union(num integer, str text),
+    unit text
+);
+
 create table functions (
     function_id ubigint,
     name text,
