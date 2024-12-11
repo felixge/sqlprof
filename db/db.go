@@ -123,9 +123,11 @@ func (db *DB) loadTrace(ctx context.Context, r io.Reader) (err error) {
 		switch ev.Kind() {
 		case trace.EventStackSample:
 			if err = l.Append(
-				"cpu_samples",
-				uint64(ev.Time()),
+				"stack_samples",
+				"samples/count", // same as used by go's pprof cpu profile
 				nullableStackID(srcStackID),
+				1,
+				uint64(ev.Time()),
 				nullableResource(ev.Goroutine()),
 				nullableResource(ev.Proc()),
 				nullableResource(ev.Thread()),

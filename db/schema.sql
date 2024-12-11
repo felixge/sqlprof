@@ -23,9 +23,11 @@ create table p_transitions (
     src_m bigint
 );
 
-create table cpu_samples (
-    end_time_ns bigint,
+create table stack_samples (
+    type text,
     src_stack_id ubigint,
+    value bigint,
+    end_time_ns bigint,
     src_g bigint,
     src_p bigint,
     src_m bigint
