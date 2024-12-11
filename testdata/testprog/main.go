@@ -1,11 +1,13 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"flag"
 	"fmt"
 	"os"
 	"runtime"
+	"runtime/pprof"
 	"time"
 
 	"github.com/felixge/sqlprof/internal/profile"
@@ -73,7 +75,10 @@ func runSleep() {
 }
 
 func cpuHog(d time.Duration) {
-	start := time.Now()
-	for time.Since(start) < d {
-	}
+	labels := pprof.Labels("duration", d.String())
+	pprof.Do(context.Background(), labels, func(_ context.Context) {
+		start := time.Now()
+		for time.Since(start) < d {
+		}
+	})
 }
