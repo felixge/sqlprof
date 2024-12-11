@@ -135,7 +135,7 @@ func (db *DB) loadTrace(ctx context.Context, r io.Reader) (err error) {
 			if err = l.Append(
 				"stack_samples",
 				"samples/count", // same as used by go's pprof cpu profile
-				nullableStackID(srcStackID),
+				nullableUint64(srcStackID),
 				1,
 				uint64(ev.Time()),
 				nil,
@@ -154,7 +154,7 @@ func (db *DB) loadTrace(ctx context.Context, r io.Reader) (err error) {
 					uint64(ev.Time()),
 					metricEv.Name,
 					int64(metricEv.Value.Uint64()),
-					nullableStackID(srcStackID),
+					nullableUint64(srcStackID),
 					nullableResource(ev.Goroutine()),
 					nullableResource(ev.Proc()),
 					nullableResource(ev.Thread()),
@@ -229,8 +229,8 @@ func (db *DB) loadTrace(ctx context.Context, r io.Reader) (err error) {
 					nullableString(st.Reason),
 					uint64(dt),
 					uint64(ev.Time()),
-					nullableStackID(stackID),
-					nullableStackID(srcStackID),
+					nullableUint64(stackID),
+					nullableUint64(srcStackID),
 					nullableResource(ev.Goroutine()),
 					nullableResource(ev.Thread()),
 					nullableResource(ev.Proc()),
@@ -272,10 +272,10 @@ func (db *DB) loadPPROF(ctx context.Context, r io.Reader) (err error) {
 			if err = l.Append(
 				"stack_samples",
 				st.Type+"/"+st.Unit,
-				nullableStackID(srcStackID),
+				nullableUint64(srcStackID),
 				s.Value[i],
 				nil, // time
-				labelSetID,
+				nullableUint64(labelSetID),
 				nil, // src_g
 				nil, // src_p
 				nil, // src_m
@@ -381,7 +381,7 @@ func nullableResource[T trace.ProcID | trace.GoID | trace.ThreadID](v T) any {
 	return int64(v)
 }
 
-func nullableStackID(v uint64) any {
+func nullableUint64(v uint64) any {
 	if v == 0 {
 		return nil
 	}
