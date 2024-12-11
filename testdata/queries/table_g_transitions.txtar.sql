@@ -1,7 +1,7 @@
 -- sample.sql --
 select distinct on (from_state, to_state, reason, stack_id is null, src_stack_id is null, src_g is null, src_p is null, src_m is null) *
 from g_transitions
-order by from_state, to_state, reason, stack_id, src_stack_id, src_g, src_p, src_m asc;
+order by from_state, to_state, reason, stack_id, src_stack_id, src_g, src_p, src_m, end_time_ns asc;
 -- sample.txt --
 ../testdata/testprog/go1.23.3.trace:
 +----+--------------+----------+----------------------------+-------------+-----------------+----------+--------------+-------+------------+-------+
@@ -11,7 +11,7 @@ order by from_state, to_state, reason, stack_id, src_stack_id, src_g, src_p, src
 | 51 | runnable     | runnable | <nil>                      |        7173 | 981363941564997 | <nil>    | <nil>        | <nil> | 6124646400 |     2 |
 | 41 | runnable     | running  | <nil>                      |        2368 | 981359936402688 | <nil>    | <nil>        | <nil> | 6124646400 |     0 |
 |  3 | running      | notexist | <nil>                      |         768 | 981369937455104 | <nil>    | <nil>        |     3 | 6125793280 |     0 |
-|  1 | running      | runnable | preempted                  |    13285888 | 981361793055296 |       15 | <nil>        |     1 | 6124646400 |     0 |
+|  1 | running      | runnable | preempted                  |    13285888 | 981361239038336 |       15 | <nil>        |     1 | 6124646400 |     0 |
 |  1 | running      | running  | <nil>                      |     7088384 | 981363941669824 | <nil>    | <nil>        |     1 | 6125793280 |     1 |
 | 51 | running      | syscall  | <nil>                      |         576 | 981368948169280 |       13 | <nil>        |    51 | 6124646400 |     0 |
 | 17 | running      | waiting  | GC background sweeper wait |        9856 | 981359936699904 |       19 | <nil>        |    17 | 6124646400 |     0 |
@@ -31,7 +31,7 @@ order by from_state, to_state, reason, stack_id, src_stack_id, src_g, src_p, src
 | 17 | waiting      | runnable | <nil>                      |         576 | 981359936596864 | <nil>    |           17 |    41 | 6124646400 |     0 |
 | 41 | waiting      | runnable | <nil>                      |         256 | 981359936400320 | <nil>    | <nil>        | <nil> | 6124646400 |     0 |
 | 18 | waiting      | runnable | <nil>                      |         192 | 981359936714368 | <nil>    | <nil>        | <nil> | 6123499520 | <nil> |
-| 34 | waiting      | waiting  | <nil>                      |  2002647936 | 981361939087424 |       10 | <nil>        | <nil> | <nil>      | <nil> |
+| 34 | waiting      | waiting  | <nil>                      |  1001455232 | 981361939087424 |       10 | <nil>        | <nil> | <nil>      | <nil> |
 | 33 | waiting      | waiting  | <nil>                      |   101010048 | 981362963206208 | <nil>    | <nil>        | <nil> | 6124646400 |     0 |
 +----+--------------+----------+----------------------------+-------------+-----------------+----------+--------------+-------+------------+-------+
 -- block.sql --
