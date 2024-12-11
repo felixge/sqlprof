@@ -63,7 +63,7 @@ create table functions (
 create view stacks as
 select
     stack_id,
-    array_agg(concat(functions.name, ' (', concat(regexp_extract(functions.file, '[^/]+$'), ':', frames.line), ')') order by stack_frames.position) as stack,
+    array_agg(concat(functions.name, ' (', concat(regexp_extract(functions.file, '[^/]+$'), ':', frames.line), ')') order by stack_frames.position) as frames,
     array_agg(functions.name order by stack_frames.position) as funcs,
     array_agg(functions.file order by stack_frames.position) as files,
     array_agg(frames.line order by stack_frames.position) as lines,
@@ -152,7 +152,7 @@ select
     name,
     value,
     stack_id,
-    stack,
+    funcs,
     g,
     p,
     m
