@@ -23,12 +23,12 @@ create table p_transitions (
     src_m bigint
 );
 
-create table raw_cpu_samples (
+create table cpu_samples (
     end_time_ns bigint,
-    stack_id ubigint,
-    g bigint,
-    p bigint,
-    m bigint
+    src_stack_id ubigint,
+    src_g bigint,
+    src_p bigint,
+    src_m bigint
 );
 
 create table metrics (
@@ -96,17 +96,6 @@ create or replace macro stack(_stack_id) as (
     from stacks
     where stack_id = _stack_id
 );
-
-create view cpu_samples as
-select
-    raw_cpu_samples.end_time_ns,
-    raw_cpu_samples.stack_id,
-    stacks.funcs AS stack_funcs,
-    raw_cpu_samples.g,
-    raw_cpu_samples.p,
-    raw_cpu_samples.m
-from raw_cpu_samples
-left join stacks using (stack_id);
 
 create view goroutines as
 select

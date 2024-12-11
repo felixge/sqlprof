@@ -123,7 +123,7 @@ func (db *DB) loadTrace(ctx context.Context, r io.Reader) (err error) {
 		switch ev.Kind() {
 		case trace.EventStackSample:
 			if err = l.Append(
-				"raw_cpu_samples",
+				"cpu_samples",
 				uint64(ev.Time()),
 				nullableStackID(srcStackID),
 				nullableResource(ev.Goroutine()),
