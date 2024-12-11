@@ -27,7 +27,7 @@ func TestQueries(t *testing.T) {
 		},
 		{
 			path:      filepath.Join("..", "testdata", "testprog", "go1.23.3.cpu.pprof"),
-			whitelist: []string{"table_stack_samples", "view_stacks", "table_frames"},
+			whitelist: []string{"table_stack_samples", "view_stacks", "table_frames", "table_label_sets"},
 		},
 	}
 	for _, trace := range traces {

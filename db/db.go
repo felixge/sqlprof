@@ -138,6 +138,7 @@ func (db *DB) loadTrace(ctx context.Context, r io.Reader) (err error) {
 				nullableStackID(srcStackID),
 				1,
 				uint64(ev.Time()),
+				nil,
 				nullableResource(ev.Goroutine()),
 				nullableResource(ev.Proc()),
 				nullableResource(ev.Thread()),
@@ -262,6 +263,11 @@ func (db *DB) loadPPROF(ctx context.Context, r io.Reader) (err error) {
 			return
 		}
 
+		var labelSetID uint64
+		if labelSetID, err = l.LabelSet(sampleLabelSets(s)); err != nil {
+			return
+		}
+
 		for i, st := range prof.SampleType {
 			if err = l.Append(
 				"stack_samples",
@@ -269,6 +275,7 @@ func (db *DB) loadPPROF(ctx context.Context, r io.Reader) (err error) {
 				nullableStackID(srcStackID),
 				s.Value[i],
 				nil, // time
+				labelSetID,
 				nil, // src_g
 				nil, // src_p
 				nil, // src_m
@@ -280,12 +287,10 @@ func (db *DB) loadPPROF(ctx context.Context, r io.Reader) (err error) {
 	return nil
 }
 
-func sampleLabelSets(s *profile.Sample, fn func(label) error) error {
+func sampleLabelSets(s *profile.Sample) (labels []label) {
 	for key, vals := range s.Label {
 		for _, val := range vals {
-			if err := fn(label{Key: key, StrVal: val}); err != nil {
-				return err
-			}
+			labels = append(labels, label{Key: key, StrVal: val})
 		}
 	}
 	for key, vals := range s.NumLabel {
@@ -294,12 +299,10 @@ func sampleLabelSets(s *profile.Sample, fn func(label) error) error {
 			if units, ok := s.NumUnit[key]; ok && i < len(units) {
 				ls.NumUnit = units[i]
 			}
-			if err := fn(ls); err != nil {
-				return err
-			}
+			labels = append(labels, ls)
 		}
 	}
-	return nil
+	return
 }
 
 type traceFrameSource struct {
@@ -513,8 +516,36 @@ func (l *loader) Stack(s frameSource) (stackID uint64, err error) {
 }
 
 func (l *loader) LabelSet(ls []label) (uint64, error) {
+	if len(ls) == 0 {
+		return 0, nil
+	}
 	l.labelSetIdx++
-	return 0, nil
+	for _, label := range ls {
+		var strVal any
+		var numVal any
+		if label.StrVal != "" {
+			strVal = label.StrVal
+		} else {
+			numVal = label.NumVal
+		}
+
+		var unit any
+		if label.NumUnit != "" {
+			unit = label.NumUnit
+		}
+
+		if err := l.Append(
+			"label_sets",
+			l.labelSetIdx,
+			label.Key,
+			strVal,
+			numVal,
+			unit,
+		); err != nil {
+			return 0, err
+		}
+	}
+	return l.labelSetIdx, nil
 }
 
 func (l *loader) Close() error {

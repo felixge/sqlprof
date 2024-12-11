@@ -28,6 +28,7 @@ create table stack_samples (
     src_stack_id ubigint,
     value bigint,
     end_time_ns bigint,
+    label_set_id ubigint,
     src_g bigint,
     src_p bigint,
     src_m bigint
@@ -60,7 +61,8 @@ create table frames (
 create table label_sets (
     label_set_id ubigint,
     key text,
-    val union(num integer, str text),
+    str_val text,
+    num_val integer,
     unit text
 );
 
