@@ -18,11 +18,16 @@ var updateFiles = os.Getenv("UPDATE") != ""
 
 func TestQueries(t *testing.T) {
 	traces := []*struct {
-		path string
-		db   *db.DB
+		path      string
+		db        *db.DB
+		whitelist []string // limit which query archives to run
 	}{
 		{
 			path: filepath.Join("..", "testdata", "testprog", "go1.23.3.trace"),
+		},
+		{
+			path:      filepath.Join("..", "testdata", "testprog", "go1.23.3.cpu.pprof"),
+			whitelist: []string{"table_stack_samples", "view_stacks"},
 		},
 	}
 	for _, trace := range traces {
@@ -30,8 +35,8 @@ func TestQueries(t *testing.T) {
 		require.NoError(t, err)
 
 		trace.db, err = db.Create("", db.Profile{
-			Kind: db.ProfileKindTrace,
-			Data: bytes.NewReader(data),
+			Filename: trace.path,
+			Data:     bytes.NewReader(data),
 		})
 		require.NoError(t, err)
 		defer trace.db.Close()
@@ -55,6 +60,21 @@ func TestQueries(t *testing.T) {
 				t.Run(queryName, func(t *testing.T) {
 					var got bytes.Buffer
 					for _, trace := range traces {
+						isWhitelisted := func() bool {
+							if trace.whitelist == nil {
+								return true
+							}
+							for _, name := range trace.whitelist {
+								if strings.TrimSuffix(tarName, ".txtar.sql") == name {
+									return true
+								}
+							}
+							return false
+						}
+						if !isWhitelisted() {
+							continue
+						}
+
 						fmt.Fprintf(&got, "%s:\n", trace.path)
 						rows, err := trace.db.Query(string(queryFile.Data))
 						require.NoError(t, err)

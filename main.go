@@ -9,7 +9,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
-	"strings"
 
 	"github.com/felixge/sqlprof/db"
 	"github.com/felixge/sqlprof/db/dbutil"
@@ -143,8 +142,8 @@ func loadProfile(profilePath string) (d *db.DB, err error) {
 
 	// Load the profile into the database.
 	profile := db.Profile{
-		Kind: guessFileType(profileFile),
-		Data: profileFile,
+		Filename: profileFile.Name(),
+		Data:     profileFile,
 	}
 	if d, err = db.Create(duckPath, profile); err != nil {
 		return nil, fmt.Errorf("failed to create duckdb: path=%q err=%w", duckPath, err)
@@ -158,14 +157,4 @@ func duckTempPath(path string) string {
 	dir := os.TempDir()
 	name := fmt.Sprintf("sqlprof_%x.duckdb", sha256.Sum256([]byte(path)))
 	return filepath.Join(dir, name)
-}
-
-func guessFileType(f *os.File) db.ProfileKind {
-	// TODO: make this more robust.
-	switch {
-	case strings.HasSuffix(f.Name(), ".pprof"):
-		return db.ProfileKindPPROF
-	default:
-		return db.ProfileKindTrace
-	}
 }

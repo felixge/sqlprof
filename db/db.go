@@ -32,8 +32,8 @@ const (
 
 // Profile is a profile that can be converted into a database.
 type Profile struct {
-	Kind ProfileKind
-	Data io.Reader
+	Data     io.Reader
+	Filename string
 }
 
 // Create creates a new duckdb at the given path and loads the profile into it.
@@ -55,7 +55,7 @@ func Create(duckPath string, p Profile) (*DB, error) {
 		return nil, errors.Join(err, db.Close())
 	}
 
-	switch p.Kind {
+	switch guessFileType(p.Filename) {
 	case ProfileKindTrace:
 		if err := db.loadTrace(context.Background(), p.Data); err != nil {
 			return nil, err
@@ -65,9 +65,19 @@ func Create(duckPath string, p Profile) (*DB, error) {
 			return nil, err
 		}
 	default:
-		return nil, fmt.Errorf("invalid profile: kind=%q", p.Kind)
+		return nil, fmt.Errorf("unknown profile type: %q", p.Filename)
 	}
 	return db, nil
+}
+
+func guessFileType(filename string) ProfileKind {
+	// TODO: make this more robust.
+	switch {
+	case strings.HasSuffix(filename, ".pprof"):
+		return ProfileKindPPROF
+	default:
+		return ProfileKindTrace
+	}
 }
 
 type DB struct {
@@ -247,11 +257,16 @@ func (db *DB) loadPPROF(ctx context.Context, r io.Reader) (err error) {
 	defer func() { err = errors.Join(err, l.Close()) }()
 
 	for _, s := range prof.Sample {
+		var srcStackID uint64
+		if srcStackID, err = l.Stack(&pprofFrameSource{s.Location}); err != nil {
+			return
+		}
+
 		for i, st := range prof.SampleType {
 			if err = l.Append(
 				"stack_samples",
 				st.Type+"/"+st.Unit,
-				nil, //nullableStackID(srcStackID),
+				nullableStackID(srcStackID),
 				s.Value[i],
 				nil, // time
 				nil, // src_g
@@ -263,6 +278,28 @@ func (db *DB) loadPPROF(ctx context.Context, r io.Reader) (err error) {
 		}
 	}
 	return nil
+}
+
+type pprofFrameSource struct {
+	locations []*profile.Location
+}
+
+func (p *pprofFrameSource) Frames(fn func(trace.StackFrame) bool) bool {
+	var frame trace.StackFrame
+	for _, loc := range p.locations {
+		for _, line := range loc.Line {
+			frame = trace.StackFrame{
+				PC:   loc.Address,
+				Func: line.Function.Name,
+				File: line.Function.Filename,
+				Line: uint64(line.Line),
+			}
+			if !fn(frame) {
+				return false
+			}
+		}
+	}
+	return true
 }
 
 func nullableString(v string) any {
@@ -330,7 +367,11 @@ func (l *loader) Append(table string, args ...driver.Value) (err error) {
 	return appender.AppendRow(args...)
 }
 
-func (l *loader) Stack(s trace.Stack) (stackID uint64, err error) {
+type frameSource interface {
+	Frames(func(trace.StackFrame) bool) bool
+}
+
+func (l *loader) Stack(s frameSource) (stackID uint64, err error) {
 	if s == trace.NoStack {
 		return 0, nil
 	}
