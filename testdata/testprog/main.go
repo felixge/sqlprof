@@ -75,7 +75,7 @@ func runSleep() {
 }
 
 func cpuHog(d time.Duration) {
-	labels := pprof.Labels("duration", d.String())
+	labels := pprof.Labels("func", "cpuHog", "duration", d.String())
 	pprof.Do(context.Background(), labels, func(_ context.Context) {
 		start := time.Now()
 		for time.Since(start) < d {

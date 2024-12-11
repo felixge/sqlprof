@@ -7,30 +7,29 @@ order by from_state, to_state, reason, stack_id, src_stack_id, src_g, src_p, src
 +----+--------------+----------+----------------------------+-------------+------------------+----------+--------------+-------+------------+-------+
 | g  |  from_state  | to_state |           reason           | duration_ns |   end_time_ns    | stack_id | src_stack_id | src_g |   src_m    | src_p |
 +----+--------------+----------+----------------------------+-------------+------------------+----------+--------------+-------+------------+-------+
-| 28 | notexist     | runnable | <nil>                      |           0 | 1032001187170624 |        5 |            4 |     1 | 8674447168 |     1 |
-| 28 | runnable     | running  | <nil>                      |        2432 | 1032002093707328 | <nil>    | <nil>        | <nil> | 6138228736 |     0 |
-|  7 | running      | notexist | <nil>                      |        1536 | 1032011186567488 | <nil>    | <nil>        |     7 | 8674447168 |     0 |
-|  1 | running      | runnable | preempted                  |    14713024 | 1032003043970688 |       22 | <nil>        |     1 | 6138228736 |     0 |
-|  1 | running      | running  | <nil>                      |     9309184 | 1032005194784704 | <nil>    | <nil>        |     1 | 8674447168 |     3 |
-| 30 | running      | syscall  | <nil>                      |        3520 | 1032007197240384 |       14 | <nil>        |    30 | 6138228736 |     0 |
-|  3 | running      | waiting  | GC background sweeper wait |       48448 | 1032001189297600 |       19 | <nil>        |     3 | 6138802176 |     2 |
-| 28 | running      | waiting  | chan receive               |        3136 | 1032002093710464 |       11 | <nil>        |    28 | 6138228736 |     0 |
-|  1 | running      | waiting  | sleep                      |    19993664 | 1032008318225408 |       10 | <nil>        |     1 | 6138228736 |     0 |
-| 29 | running      | waiting  | sync                       |      165949 | 1032010201404608 |       38 | <nil>        |    29 | 6138228736 |     0 |
-|  4 | running      | waiting  | system goroutine wait      |        1280 | 1032001189086848 |       12 | <nil>        |     4 | 6138802176 |     0 |
-| 30 | syscall      | runnable | <nil>                      |       75520 | 1032001189183040 | <nil>    | <nil>        |    30 | 6138802176 | <nil> |
-| 30 | syscall      | running  | <nil>                      |         128 | 1032007197275200 | <nil>    | <nil>        |    30 | 6138228736 |     0 |
-| 30 | syscall      | syscall  | <nil>                      |       34688 | 1032007197275072 | <nil>    | <nil>        |    30 | 6138228736 |     0 |
-|  4 | undetermined | runnable | <nil>                      |           0 | 1032001189085312 | <nil>    | <nil>        | <nil> | 6138802176 |     0 |
-|  1 | undetermined | running  | <nil>                      |           0 | 1032001186955328 | <nil>    | <nil>        | <nil> | 8674447168 |     1 |
-| 18 | undetermined | waiting  | <nil>                      |           0 | 1032002190272832 |       20 | <nil>        | <nil> | <nil>      | <nil> |
-|  3 | undetermined | waiting  | <nil>                      |           0 | 1032001189122496 | <nil>    | <nil>        |    27 | 8674447168 |     1 |
-| 17 | undetermined | waiting  | <nil>                      |           0 | 1032001286498048 | <nil>    | <nil>        | <nil> | 6139375616 |     1 |
-|  3 | waiting      | runnable | <nil>                      |         448 | 1032001189122944 | <nil>    |           16 |    27 | 8674447168 |     1 |
-| 28 | waiting      | runnable | <nil>                      |   101012608 | 1032002093704896 | <nil>    | <nil>        | <nil> | 6138228736 |     0 |
-|  4 | waiting      | runnable | <nil>                      |      227648 | 1032001189314496 | <nil>    | <nil>        | <nil> | 6137655296 | <nil> |
-| 18 | waiting      | waiting  | <nil>                      |  1001529280 | 1032003191802112 |       20 | <nil>        | <nil> | <nil>      | <nil> |
-| 28 | waiting      | waiting  | <nil>                      |   101050496 | 1032005224147328 | <nil>    | <nil>        | <nil> | 6138228736 |     0 |
+| 28 | notexist     | runnable | <nil>                      |           0 | 1032652096955072 |        6 |            5 |     1 | 8674447168 |     1 |
+| 27 | runnable     | running  | <nil>                      |        3264 | 1032652096969536 | <nil>    | <nil>        | <nil> | 6137360384 |     0 |
+| 31 | running      | notexist | <nil>                      |         640 | 1032662102765888 | <nil>    | <nil>        |    31 | 6137933824 |     2 |
+|  1 | running      | runnable | preempted                  |    12501376 | 1032652681749824 |       13 | <nil>        |     1 | 6137360384 |     0 |
+|  1 | running      | running  | <nil>                      |     3193280 | 1032656102673088 | <nil>    | <nil>        |     1 | 6138507264 |     0 |
+| 30 | running      | syscall  | <nil>                      |        3840 | 1032655101367872 |       14 | <nil>        |    30 | 6137360384 |     0 |
+|  3 | running      | waiting  | GC background sweeper wait |       27520 | 1032652097597504 |       22 | <nil>        |     3 | 6137360384 |     0 |
+| 28 | running      | waiting  | chan receive               |        3520 | 1032652097155456 |       12 | <nil>        |    28 | 6137360384 |     0 |
+|  1 | running      | waiting  | sleep                      |    11508224 | 1032652693260224 |       24 | <nil>        |     1 | 6137360384 |     0 |
+| 27 | running      | waiting  | sync                       |      181120 | 1032652097150656 |       11 | <nil>        |    27 | 6137360384 |     0 |
+| 30 | running      | waiting  | system goroutine wait      |        1536 | 1032655101489280 |       15 | <nil>        |    30 | 6137360384 |     0 |
+| 30 | syscall      | running  | <nil>                      |       59776 | 1032655101427648 | <nil>    | <nil>        |    30 | 6137360384 |     0 |
+| 30 | syscall      | syscall  | <nil>                      |       31168 | 1032657103843264 | <nil>    | <nil>        |    30 | 6137360384 |     0 |
+|  1 | undetermined | running  | <nil>                      |           0 | 1032652096885632 | <nil>    | <nil>        | <nil> | 8674447168 |     1 |
+| 18 | undetermined | waiting  | <nil>                      |           0 | 1032653098506944 |       21 | <nil>        | <nil> | <nil>      | <nil> |
+| 25 | undetermined | waiting  | <nil>                      |           0 | 1032652096919360 | <nil>    | <nil>        |     1 | 8674447168 |     1 |
+| 27 | undetermined | waiting  | <nil>                      |           0 | 1032652096965888 | <nil>    | <nil>        | <nil> | 6137360384 |     0 |
+|  4 | undetermined | waiting  | <nil>                      |           0 | 1032652097618752 | <nil>    | <nil>        | <nil> | 6136786944 | <nil> |
+| 25 | waiting      | runnable | <nil>                      |         640 | 1032652096920000 | <nil>    |            4 |     1 | 8674447168 |     1 |
+| 27 | waiting      | runnable | <nil>                      |         384 | 1032652096966272 | <nil>    | <nil>        | <nil> | 6137360384 |     0 |
+|  4 | waiting      | runnable | <nil>                      |         192 | 1032652097618944 | <nil>    | <nil>        | <nil> | 6136786944 | <nil> |
+| 18 | waiting      | waiting  | <nil>                      |  1001352640 | 1032654099859584 |       21 | <nil>        | <nil> | <nil>      | <nil> |
+|  1 | waiting      | waiting  | <nil>                      |    44668864 | 1032654118457024 | <nil>    | <nil>        | <nil> | 6137360384 |     0 |
 +----+--------------+----------+----------------------------+-------------+------------------+----------+--------------+-------+------------+-------+
 -- block.sql --
 select distinct on (from_state, reason)
@@ -45,13 +44,13 @@ asc limit 10;
 +----+--------------+----------+----------------------------+------------------------------------------------------------------------------------+---------------------+-------+------------+-------+
 | g  |  from_state  | to_state |           reason           |                                  funcs(stack_id)                                   | funcs(src_stack_id) | src_g |   src_m    | src_p |
 +----+--------------+----------+----------------------------+------------------------------------------------------------------------------------+---------------------+-------+------------+-------+
-|  1 | running      | waiting  | sleep                      | [time.Sleep main.runSleep main.run main.main]                                      | <nil>               |     1 | 8674447168 |     1 |
-| 27 | undetermined | waiting  | <nil>                      | <nil>                                                                              | <nil>               | <nil> | 8674447168 |     1 |
-| 28 | running      | waiting  | chan receive               | [runtime.chanrecv1 runtime.(*wakeableSleep).sleep runtime.traceStartReadCPU.func1] | <nil>               |    28 | 6138802176 |     0 |
-|  4 | running      | waiting  | system goroutine wait      | [runtime.(*scavengerState).park runtime.bgscavenge]                                | <nil>               |     4 | 6138802176 |     0 |
-|  3 | running      | waiting  | GC background sweeper wait | [runtime.goparkunlock runtime.bgsweep]                                             | <nil>               |     3 | 6138802176 |     2 |
-| 29 | running      | waiting  | sync                       | [runtime.traceAdvance runtime.(*traceAdvancerState).start.func1]                   | <nil>               |    29 | 6139375616 |     3 |
-| 30 | waiting      | waiting  | <nil>                      | <nil>                                                                              | <nil>               | <nil> | 6139375616 |     3 |
+| 25 | undetermined | waiting  | <nil>                      | <nil>                                                                              | <nil>               |     1 | 8674447168 |     1 |
+| 27 | running      | waiting  | sync                       | [runtime.gcMarkDone runtime.gcBgMarkWorker]                                        | <nil>               |    27 | 6137360384 |     0 |
+| 28 | running      | waiting  | chan receive               | [runtime.chanrecv1 runtime.(*wakeableSleep).sleep runtime.traceStartReadCPU.func1] | <nil>               |    28 | 6137360384 |     0 |
+| 30 | running      | waiting  | system goroutine wait      | [runtime/trace.Start.func1]                                                        | <nil>               |    30 | 8674447168 |     1 |
+|  3 | running      | waiting  | GC background sweeper wait | [runtime.goparkunlock runtime.bgsweep]                                             | <nil>               |     3 | 6137360384 |     0 |
+|  1 | running      | waiting  | sleep                      | [time.Sleep main.runSleep main.run main.main]                                      | <nil>               |     1 | 6139080704 |     1 |
+| 28 | waiting      | waiting  | <nil>                      | <nil>                                                                              | <nil>               | <nil> | 6137360384 |     1 |
 +----+--------------+----------+----------------------------+------------------------------------------------------------------------------------+---------------------+-------+------------+-------+
 -- unblock.sql --
 select g, from_state, to_state, reason, funcs(stack_id), funcs(src_stack_id), src_g, src_m, src_p
@@ -64,12 +63,14 @@ order by end_time_ns
 asc limit 10;
 -- unblock.txt --
 ../testdata/testprog/go1.23.3.trace:
-+---+------------+----------+--------+-----------------+--------------------------------------------------------------------------------------------------+-------+------------+-------+
-| g | from_state | to_state | reason | funcs(stack_id) |                                       funcs(src_stack_id)                                        | src_g |   src_m    | src_p |
-+---+------------+----------+--------+-----------------+--------------------------------------------------------------------------------------------------+-------+------------+-------+
-| 3 | waiting    | runnable | <nil>  | <nil>           | [runtime.systemstack_switch runtime.gcMarkTermination runtime.gcMarkDone runtime.gcBgMarkWorker] |    27 | 8674447168 |     1 |
-| 1 | waiting    | runnable | <nil>  | <nil>           | [runtime.chansend1 main.chanUnblock.func1]                                                       |     7 | 8674447168 |     0 |
-+---+------------+----------+--------+-----------------+--------------------------------------------------------------------------------------------------+-------+------------+-------+
++----+------------+----------+--------+-----------------+--------------------------------------------------------------------------------------------------------------------+-------+------------+-------+
+| g  | from_state | to_state | reason | funcs(stack_id) |                                                funcs(src_stack_id)                                                 | src_g |   src_m    | src_p |
++----+------------+----------+--------+-----------------+--------------------------------------------------------------------------------------------------------------------+-------+------------+-------+
+| 25 | waiting    | runnable | <nil>  | <nil>           | [runtime.StartTrace runtime/trace.Start github.com/felixge/sqlprof/internal/profile.StartTrace main.run main.main] |     1 | 8674447168 |     1 |
+| 27 | waiting    | runnable | <nil>  | <nil>           | [runtime.gcMarkDone runtime.gcBgMarkWorker]                                                                        |    25 | 6137360384 |     0 |
+|  3 | waiting    | runnable | <nil>  | <nil>           | [runtime.systemstack_switch runtime.gcMarkTermination runtime.gcMarkDone runtime.gcBgMarkWorker]                   |    25 | 6137360384 |     0 |
+|  1 | waiting    | runnable | <nil>  | <nil>           | [runtime.chansend1 main.chanUnblock.func1]                                                                         |    31 | 6137933824 |     2 |
++----+------------+----------+--------+-----------------+--------------------------------------------------------------------------------------------------------------------+-------+------------+-------+
 -- aggregate.sql --
 select
     min(duration_ns),
@@ -84,5 +85,5 @@ from g_transitions;
 +------------------+------------------+------------------+------------------+------------------+---------------------+
 | min(duration_ns) | max(duration_ns) | sum(duration_ns) | min(end_time_ns) | max(end_time_ns) |  sum(end_time_ns)   |
 +------------------+------------------+------------------+------------------+------------------+---------------------+
-|                0 |       2002504256 |     185880664640 | 1032001186955328 | 1032011186595328 | 1868962724936891417 |
+|                0 |       2002290560 |     187988686528 | 1032652096885632 | 1032662102806144 | 1882533356741042383 |
 +------------------+------------------+------------------+------------------+------------------+---------------------+
