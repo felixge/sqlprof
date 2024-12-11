@@ -5,7 +5,7 @@ order by end_time_ns asc;
 -- sample.txt --
 ../testdata/testprog/go1.23.3.trace:
 +-----------------+----------+----------------------------------------------------------------------------------------------------------------------------------------------------------------+-------+-------+------------+
-|   end_time_ns   | stack_id |                                                                             stack                                                                              |   g   |   p   |     m      |
+|   end_time_ns   | stack_id |                                                                             funcs                                                                              |   g   |   p   |     m      |
 +-----------------+----------+----------------------------------------------------------------------------------------------------------------------------------------------------------------+-------+-------+------------+
 | 981359951846784 |       22 | [runtime.nanotime1 runtime.nanotime time.Since main.cpuHog main.runSleep main.run main.main runtime.main runtime.goexit]                                       |     1 |     1 | 6125219840 |
 | 981360172294912 |       24 | [runtime.(*timer).modify runtime.(*timer).reset runtime.resetForSleep runtime.park_m runtime.mcall]                                                            | <nil> |     1 | 6125793280 |

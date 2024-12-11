@@ -3,7 +3,7 @@ select * from g_transitions order by end_time_ns asc limit 10;
 -- sample.txt --
 ../testdata/testprog/go1.23.3.trace:
 +----+--------------+----------+--------+-------------+-----------------+----------+---------------------------------------------+--------------+--------------------------------------------------------------------------------------------------------------------------------------------------------+-------+------------+-------+
-| g  |  from_state  | to_state | reason | duration_ns |   end_time_ns   | stack_id |                    stack                    | src_stack_id |                                                                       src_stack                                                                        | src_g |   src_m    | src_p |
+| g  |  from_state  | to_state | reason | duration_ns |   end_time_ns   | stack_id |                    funcs                    | src_stack_id |                                                                       src_funcs                                                                        | src_g |   src_m    | src_p |
 +----+--------------+----------+--------+-------------+-----------------+----------+---------------------------------------------+--------------+--------------------------------------------------------------------------------------------------------------------------------------------------------+-------+------------+-------+
 |  1 | undetermined | running  | <nil>  |           0 | 981359936358784 | <nil>    | <nil>                                       | <nil>        | <nil>                                                                                                                                                  | <nil> | 6125793280 |     3 |
 | 41 | undetermined | waiting  | <nil>  |           0 | 981359936400064 | <nil>    | <nil>                                       | <nil>        | <nil>                                                                                                                                                  | <nil> | 6124646400 |     0 |
@@ -26,7 +26,7 @@ asc limit 10;
 -- block.txt --
 ../testdata/testprog/go1.23.3.trace:
 +----+--------------+----------+----------------------------+-------------+-----------------+----------+------------------------------------------------------------------------------------+--------------+-----------+-------+------------+-------+
-| g  |  from_state  | to_state |           reason           | duration_ns |   end_time_ns   | stack_id |                                       stack                                        | src_stack_id | src_stack | src_g |   src_m    | src_p |
+| g  |  from_state  | to_state |           reason           | duration_ns |   end_time_ns   | stack_id |                                       funcs                                        | src_stack_id | src_funcs | src_g |   src_m    | src_p |
 +----+--------------+----------+----------------------------+-------------+-----------------+----------+------------------------------------------------------------------------------------+--------------+-----------+-------+------------+-------+
 | 41 | undetermined | waiting  | <nil>                      |           0 | 981359936400064 | <nil>    | <nil>                                                                              | <nil>        | <nil>     | <nil> | 6124646400 |     0 |
 | 42 | running      | waiting  | system goroutine wait      |        4288 | 981359936440000 |       10 | [runtime.gopark runtime.gcBgMarkWorker]                                            | <nil>        | <nil>     |    42 | 6126366720 |     1 |
@@ -42,13 +42,13 @@ from g_transitions
 where
     from_state = 'waiting' and
     src_g is not null and
-    len(src_stack) > 1
+    len(src_funcs) > 1
 order by end_time_ns
 asc limit 10;
 -- unblock.txt --
 ../testdata/testprog/go1.23.3.trace:
 +----+------------+----------+--------+-------------+-----------------+----------+-------+--------------+--------------------------------------------------------------------------------------------------+-------+------------+-------+
-| g  | from_state | to_state | reason | duration_ns |   end_time_ns   | stack_id | stack | src_stack_id |                                            src_stack                                             | src_g |   src_m    | src_p |
+| g  | from_state | to_state | reason | duration_ns |   end_time_ns   | stack_id | funcs | src_stack_id |                                            src_funcs                                             | src_g |   src_m    | src_p |
 +----+------------+----------+--------+-------------+-----------------+----------+-------+--------------+--------------------------------------------------------------------------------------------------+-------+------------+-------+
 | 17 | waiting    | runnable | <nil>  |         576 | 981359936596864 | <nil>    | <nil> |           17 | [runtime.systemstack_switch runtime.gcMarkTermination runtime.gcMarkDone runtime.gcBgMarkWorker] |    41 | 6124646400 |     0 |
 |  1 | waiting    | runnable | <nil>  |    10979456 | 981369937454976 | <nil>    | <nil> |           60 | [runtime.chansend1 main.chanUnblock.func1]                                                       |     3 | 6125793280 |     0 |

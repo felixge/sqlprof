@@ -64,7 +64,7 @@ create view stacks as
 select
     stack_id,
     array_agg(concat(functions.name, ' (', concat(regexp_extract(functions.file, '[^/]+$'), ':', frames.line), ')') order by stack_frames.position) as stack,
-    array_agg(functions.name order by stack_frames.position) as functions,
+    array_agg(functions.name order by stack_frames.position) as funcs,
     array_agg(functions.file order by stack_frames.position) as files,
     array_agg(frames.line order by stack_frames.position) as lines,
     array_agg(frames.frame_id order by stack_frames.position) as frame_ids
@@ -82,9 +82,9 @@ select
     raw_g_transitions.duration_ns,
     raw_g_transitions.end_time_ns,
     raw_g_transitions.stack_id,
-    stacks.functions as stack,
+    stacks.funcs as funcs,
     raw_g_transitions.src_stack_id,
-    src_stacks.functions as src_stack,
+    src_stacks.funcs as src_funcs,
     raw_g_transitions.src_g,
     raw_g_transitions.src_m,
     raw_g_transitions.src_p
@@ -96,7 +96,7 @@ create view cpu_samples as
 select
     raw_cpu_samples.end_time_ns,
     raw_cpu_samples.stack_id,
-    stacks.functions AS stack,
+    stacks.funcs AS funcs,
     raw_cpu_samples.g,
     raw_cpu_samples.p,
     raw_cpu_samples.m
@@ -107,8 +107,8 @@ create view goroutines as
 select
     g,
     coalesce(
-        first(stack[len(stack):] order by end_time_ns) filter (where stack is not null),
-        first(src_stack[len(src_stack):] order by end_time_ns) filter (where src_stack is not null)
+        first(funcs[len(funcs):] order by end_time_ns) filter (where funcs is not null),
+        first(src_funcs[len(src_funcs):] order by end_time_ns) filter (where src_funcs is not null)
     )[1] as name,
     bool_or(reason = 'system goroutine wait') or name like 'runtime.%' as is_system_goroutine,
     coalesce(sum(duration_ns) filter (where from_state = 'running'), 0) as running_ns,
