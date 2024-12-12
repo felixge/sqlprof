@@ -23,7 +23,7 @@ cmp stdout interactive.stdout.txt
 +--------------+
 | count_star() |
 +--------------+
-|           44 |
+|          328 |
 +--------------+
 -- non-interactive.stdout.txt --
 +--------------+
@@ -40,9 +40,9 @@ cmp stdout interactive.stdout.txt
 +--------------+
 -- non-interactive-csv.stdout.txt --
 g,name,is_system_goroutine,running_ns,runnable_ns,syscall_ns,waiting_ns,total_ns,transitions
-1,main.main,false,4948948800,2008640,0,5050139968,10001097408,744
-2,runtime.forcegchelper,true,0,0,0,8999850240,8999850240,10
-3,main.chanUnblock.func1,false,1344,8512,0,10975424,10985280,6
+1,main.main,false,4949160448,2881280,0,5053839296,10005881024,738
+2,runtime.forcegchelper,true,0,0,0,9004298496,9004298496,10
+3,runtime.bgsweep,true,27520,133312,0,10005208000,10005368832,13
 -- interactive.stdin.txt --
 SELECT count(*) FROM goroutines
 -- interactive.stdout.txt --
