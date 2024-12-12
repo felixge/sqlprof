@@ -90,22 +90,27 @@ create or replace macro labels(_label_set_id) as (
     where _label_sets.label_set_id = _label_set_id
 );
 
-create or replace macro stack(__stack_id) as (
-    with _stacks as (select stack_id as _stack_id , * exclude (stack_id) from stacks)
 
-    select _stacks
-    from _stacks
+-- internal macro
+create macro _stack(__stack_id, __kind) as (
+    -- The funky table and column aliasing is a workaround for a DuckDB issue:
+    -- https://github.com/duckdb/duckdb/issues/15296
+    select case __kind
+        when 'funcs' then _funcs
+        when 'terse' then _terse
+        when 'full' then _full
+    end
+    from stacks as _(_stack_id, _funcs, _terse, _full)
     where _stack_id = __stack_id
 );
 
-create or replace macro funcs(__stack_id) as (
-    -- The funky table and column aliasing is a workaround for a bug in DuckDB:
-    -- https://github.com/duckdb/duckdb/issues/15296
-    -- select _funcs
-    -- from (select stack_id as _stack_id, funcs as _funcs from stacks)
-    -- where _stack_id = __stack_id
-    select stack(__stack_id).funcs
-);
+create macro stack_funcs(__stack_id) as (select _stack(__stack_id, 'funcs'));
+create macro stack_terse(__stack_id) as (select _stack(__stack_id, 'terse'));
+create macro stack_full(__stack_id) as (select _stack(__stack_id, 'full'));
+
+-- aliases for stack_funcs
+create macro stack(__stack_id) as (select stack_funcs(__stack_id));
+create macro funcs(__stack_id) as (select stack_funcs(__stack_id));
 
 create or replace macro root_func(__stack_id) as (
     select list_last(funcs(__stack_id))
@@ -115,17 +120,17 @@ create or replace macro leaf_func(__stack_id) as (
     select list_first(funcs(__stack_id))
 );
 
-create or replace macro contains_func(_label_set_id, s) as (
-    select exists(
-        select 1
-        from stack_frames
-        join frames using (frame_id)
-        join functions using (function_id)
-        where
-            stack_id = _label_set_id and
-            functions.name like concat('%', s, '%')
-    )
-);
+-- create or replace macro contains_func(__stack_id, s) as (
+--     select exists(
+--         select 1
+--         from stack_frames _(_stack_id, frame_id, position)
+--         join frames using (frame_id)
+--         join functions using (function_id)
+--         where
+--             _stack_id = __stack_id and
+--             functions.name like concat('%', s, '%')
+--     )
+-- );
 
 create view goroutines as
 select
