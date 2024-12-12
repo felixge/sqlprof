@@ -1,0 +1,8 @@
+# Write inline decisions for both profiles to CSV file
+exec sqlprof -format=csv testdata/pgoinline/before-pgo.pprof 'select distinct name, inlined from frames join functions using (function_id)'
+cp stdout before.csv
+exec sqlprof -format=csv testdata/pgoinline/after-pgo.pprof 'select distinct name, inlined from frames join functions using (function_id)'
+cp stdout after.csv
+
+# Anlyze which functions got inlined
+exec duckdb -c 'select name from (select * from ''after.csv'' except select * from ''before.csv'' b) where inlined order by 1'

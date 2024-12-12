@@ -1,0 +1,16 @@
+goos: darwin
+goarch: arm64
+pkg: encoding/json
+cpu: Apple M1 Max
+BenchmarkCodeMarshal-10    	    2845	    442089 ns/op	4389.32 MB/s	 1943108 B/op	       1 allocs/op
+BenchmarkCodeMarshal-10    	    2546	    423097 ns/op	4586.35 MB/s	 1943251 B/op	       1 allocs/op
+BenchmarkCodeMarshal-10    	    2547	    447490 ns/op	4336.34 MB/s	 1943267 B/op	       1 allocs/op
+BenchmarkCodeMarshal-10    	    2818	    432155 ns/op	4490.23 MB/s	 1944573 B/op	       1 allocs/op
+BenchmarkCodeMarshal-10    	    2566	    452011 ns/op	4292.98 MB/s	 1944868 B/op	       1 allocs/op
+BenchmarkCodeMarshal-10    	    2288	    449264 ns/op	4319.22 MB/s	 1941586 B/op	       1 allocs/op
+BenchmarkCodeMarshal-10    	    2527	    505984 ns/op	3835.05 MB/s	 1956534 B/op	       1 allocs/op
+BenchmarkCodeMarshal-10    	    2372	    479762 ns/op	4044.65 MB/s	 1945131 B/op	       1 allocs/op
+BenchmarkCodeMarshal-10    	    2400	    486705 ns/op	3986.96 MB/s	 1955579 B/op	       1 allocs/op
+BenchmarkCodeMarshal-10    	    2485	    474496 ns/op	4089.54 MB/s	 1950057 B/op	       1 allocs/op
+PASS
+ok  	encoding/json	14.656s
