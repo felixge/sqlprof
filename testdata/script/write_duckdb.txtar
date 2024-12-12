@@ -1,0 +1,10 @@
+exec sqlprof -o out.duck testdata/testprog/go1.23.3.cpu.pprof
+exec duckdb out.duck 'select name from functions order by name asc limit 1'
+cmp stdout output.txt
+-- output.txt --
+┌─────────────┐
+│    name     │
+│   varchar   │
+├─────────────┤
+│ main.cpuHog │
+└─────────────┘

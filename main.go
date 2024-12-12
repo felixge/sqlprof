@@ -35,6 +35,7 @@ func run() (err error) {
 		traceF      = flag.String("trace", "", "write trace to file")
 		memProfileF = flag.String("memprofile", "", "write memory profile to file")
 		formatF     = flag.String("format", "table", "output format (table, csv)")
+		outF        = flag.String("o", "", "output file")
 	)
 	flag.Parse()
 
@@ -61,9 +62,12 @@ func run() (err error) {
 	case 0:
 		return fmt.Errorf("missing argument 1: must be the path to a profile")
 	case 1:
-		return runInteractive(flag.Arg(0))
+		if *outF != "" {
+			return writeDuckDB(args[0], *outF)
+		}
+		return runInteractive(args[0])
 	default:
-		return runQuery(*formatF, args[0:len(args)-1], args[len(args)-1])
+		return runNonInteractive(*formatF, args[0:len(args)-1], args[len(args)-1])
 	}
 }
 
@@ -88,7 +92,19 @@ func runInteractive(profilePath string) (err error) {
 	return cmd.Run()
 }
 
-func runQuery(format string, paths []string, query string) (err error) {
+func writeDuckDB(profilePath, duckPath string) (err error) {
+	// Load the profile into a temporary duckdb database.
+	var db *db.DB
+	if db, err = loadProfile(profilePath); err != nil {
+		return fmt.Errorf("failed to load profile: %w", err)
+		// Close the db. If we don't, we get a lock conflict when running the CLI.
+	} else if err = db.Close(); err != nil {
+		return fmt.Errorf("failed to close db: %w", err)
+	}
+	return os.Rename(db.Path(), duckPath)
+}
+
+func runNonInteractive(format string, paths []string, query string) (err error) {
 	// Determine the row writer based on the requested format.
 	var rowWriter *dbutil.RowWriter
 	switch format {
