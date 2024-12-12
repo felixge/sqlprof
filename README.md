@@ -2,7 +2,7 @@
 
 sqlprof is a tool for exploring profiling data using duckdb SQL queries.
 
-## Examples
+## Command Line Usage
 
 The examples marked as TODO have not been implemented yet.
 
@@ -20,8 +20,15 @@ $ sqlprof -o go.duckdb go.trace
 $ sqlprof traces/*.trace 'SELECT * FROM g_transitions WHERE duration_ns > 50e6'
 ```
 
+## Query Examples
+
+### Compare Inlining
+
+### Determine GC Overhead
+
 ## TODO
 
+- [ ] Fix issues with leaf_func() and similar macros: https://github.com/duckdb/duckdb/issues/15296
 - [ ] Traces
     - [ ] EventSync
     - [ ] EventLabel

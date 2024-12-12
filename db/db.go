@@ -1,6 +1,7 @@
 package db
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"database/sql"
@@ -17,7 +18,7 @@ import (
 	"golang.org/x/exp/trace"
 )
 
-//go:embed schema.sql
+//go:embed schema.sql stdlib.txt
 var fs embed.FS
 
 // ProfileKind is a kind of profile that can be converted into a database.
@@ -52,6 +53,10 @@ func Create(duckPath string, p Profile) (*DB, error) {
 	if err != nil {
 		return nil, errors.Join(err, db.Close())
 	} else if _, err := db.Exec(string(b)); err != nil {
+		return nil, errors.Join(err, db.Close())
+	} else if stdlibMacro, err := stdlibMacro(); err != nil {
+		return nil, errors.Join(err, db.Close())
+	} else if _, err := db.Exec(stdlibMacro); err != nil {
 		return nil, errors.Join(err, db.Close())
 	}
 
@@ -494,7 +499,7 @@ func (l *loader) Stack(s frameSource) (stackID uint64, err error) {
 	}
 
 	if len(frames) == 0 {
-		panic("no frames, but not NoStack")
+		// panic("no frames, but not NoStack")
 	}
 	stackKey := newStackKey(frames)
 	stk, ok := l.stackIdx[stackKey]
@@ -606,4 +611,28 @@ func newStackKey(frames []*frameRow) stackKey {
 		Lo: binary.LittleEndian.Uint64(h.Sum(nil)[:8]),
 		Hi: binary.LittleEndian.Uint64(h.Sum(nil)[8:]),
 	}
+}
+
+func stdlibMacro() (string, error) {
+	data, err := fs.ReadFile("stdlib.txt")
+	if err != nil {
+		return "", err
+	}
+
+	var values []string
+	for _, line := range bytes.Split(data, []byte("\n")) {
+		if len(line) == 0 {
+			continue
+		}
+		values = append(values, fmt.Sprintf("('%s')", line))
+	}
+	vals := strings.Join(values, ", ")
+	tmpl := `create macro is_std(func) AS (
+	exists (
+		select *
+		from (values %s) prefixes(prefix)
+		where func like prefix || '.%%'
+	)
+);`
+	return fmt.Sprintf(tmpl, vals), nil
 }

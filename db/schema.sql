@@ -86,32 +86,45 @@ group by stack_id;
 
 create or replace macro labels(_label_set_id) as (
     select map_from_entries(array_agg({'k': key, 'v': case when str_val is not null then str_val else num_val::text end}))
-    from label_sets
-    where label_set_id = _label_set_id
+    from label_sets _label_sets
+    where _label_sets.label_set_id = _label_set_id
 );
 
-create or replace macro funcs(_stack_id) as (
-    select funcs
-    from stacks
-    where stack_id = _stack_id
+create or replace macro stack(__stack_id) as (
+    with _stacks as (select stack_id as _stack_id , * exclude (stack_id) from stacks)
+
+    select _stacks
+    from _stacks
+    where _stack_id = __stack_id
 );
 
-create or replace macro root_func(_stack_id) as (
-    select funcs[len(funcs):][1]
-    from stacks
-    where stack_id = _stack_id
+create or replace macro funcs(__stack_id) as (
+    -- The funky table and column aliasing is a workaround for a bug in DuckDB:
+    -- https://github.com/duckdb/duckdb/issues/15296
+    -- select _funcs
+    -- from (select stack_id as _stack_id, funcs as _funcs from stacks)
+    -- where _stack_id = __stack_id
+    select stack(__stack_id).funcs
 );
 
-create or replace macro leaf_func(_stack_id) as (
-    select funcs[1]
-    from stacks
-    where stack_id = _stack_id
+create or replace macro root_func(__stack_id) as (
+    select list_last(funcs(__stack_id))
 );
 
-create or replace macro stack(_stack_id) as (
-    select stacks
-    from stacks
-    where stack_id = _stack_id
+create or replace macro leaf_func(__stack_id) as (
+    select list_first(funcs(__stack_id))
+);
+
+create or replace macro contains_func(_label_set_id, s) as (
+    select exists(
+        select 1
+        from stack_frames
+        join frames using (frame_id)
+        join functions using (function_id)
+        where
+            stack_id = _label_set_id and
+            functions.name like concat('%', s, '%')
+    )
 );
 
 create view goroutines as
