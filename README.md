@@ -13,7 +13,7 @@ $ sqlprof go.trace
 # Show the number of goroutines included in a runtime trace
 $ sqlprof go.trace 'SELECT count(*) FROM goroutines'
 
-# Convert a runtime trace into a permanent duckdb file (TODO)
+# Convert a runtime trace into a permanent duckdb file
 $ sqlprof -o go.duckdb go.trace
 
 # Run a query against a directory of runtime traces
