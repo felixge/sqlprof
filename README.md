@@ -130,7 +130,6 @@ order by 2 desc;
 
 ## TODO
 
-- [ ] Fix issues with leaf_func() and similar macros: https://github.com/duckdb/duckdb/issues/15296
 - [ ] Traces
     - [ ] EventSync
     - [ ] EventLabel
