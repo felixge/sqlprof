@@ -1,11 +1,9 @@
 # sqlprof
 
-sqlprof is a tool for exploring profiling data using duckdb SQL queries.
+sqlprof is a power-user tool for exploring profiling data using duckdb SQL queries.
 Currently it supports Go runtime traces and pprof files.
 
 ## Command Line Usage
-
-The examples marked as TODO have not been implemented yet.
 
 ``` bash
 # Explore a pprof in an interactive duckdb session
