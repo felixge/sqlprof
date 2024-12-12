@@ -29,6 +29,10 @@ func TestQueries(t *testing.T) {
 			path:      filepath.Join("..", "testdata", "testprog", "go1.23.3.cpu.pprof"),
 			whitelist: []string{"table_stack_samples", "view_stacks", "table_frames", "table_label_sets"},
 		},
+		{
+			path:      filepath.Join("..", "testdata", "gcoverhead", "cpu.pprof"),
+			whitelist: []string{"query_gc_overhead"},
+		},
 	}
 	for _, trace := range traces {
 		data, err := os.ReadFile(trace.path)
