@@ -1,10 +1,23 @@
 exec sqlprof -o out.duck testdata/testprog/go1.23.3.cpu.pprof
+
+# Query the resulting database
 exec duckdb out.duck 'select name from functions order by name asc limit 1'
-cmp stdout output.txt
--- output.txt --
+cmp stdout table_query.txt
+
+# Attaching the database doesn't really work. For now we assert that it's broken
+# so we'll notice when it gets fixed. The workaround is to write intermediate
+# results to csv.
+# https://github.com/duckdb/duckdb/issues/13523
+! exec duckdb -c 'attach ''out.duck''; select funcs from out.stacks order by 1 limit 1;'
+cmp stderr view_query.txt
+
+-- table_query.txt --
 ┌─────────────┐
 │    name     │
 │   varchar   │
 ├─────────────┤
 │ main.cpuHog │
 └─────────────┘
+-- view_query.txt --
+Catalog Error: Table with name stack_frames does not exist!
+Did you mean "out.stack_frames"?
