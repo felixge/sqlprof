@@ -25,14 +25,25 @@ $ sqlprof traces/*.trace 'SELECT * FROM g_transitions WHERE duration_ns > 50e6'
 
 Let's say you are trying to understand the impact [profile-guided optimization](https://go.dev/doc/pgo) has on the inlining decisions made by the Go compiler.
 
-The commands below will give you the list of all functions that have been inlined at least once in the after.pprof profile, but were not inlined in the before.pprof profile:
+The first step is to extract the inlining information from a before and after pprof into CSV files as shown below:
 
 ```bash
-# Write inline decisions for both profiles to CSV file
-sqlprof -format=csv before.pprof 'select distinct name, inlined from frames join functions using (function_id)' > before.csv
-sqlprof -format=csv after.pprof 'select distinct name, inlined from frames join functions using (function_id)' > after.csv
-# Anlyze which functions got inlined
-duckdb -c 'select name from (select * from ''after.csv'' except select * from ''before.csv'' b) where inlined order by 1'
+sqlprof -format=csv before.pprof \
+    'select distinct name, inlined from frames join functions using (function_id)' > before.csv
+sqlprof -format=csv after.pprof \
+    'select distinct name, inlined from frames join functions using (function_id)' > after.csv
+```
+
+Then we can run a standalone `duckdb` session and run the following query to determine which functions were inlined due to pgo:
+
+```sql
+select name
+from (
+    select * from 'after.csv'
+    except
+    select * from 'before.csv'
+) where inlined
+order by 1
 ```
 ```
         ┌─────────────────────────────────────────────┐
