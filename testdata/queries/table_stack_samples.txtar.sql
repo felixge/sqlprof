@@ -1,7 +1,7 @@
 -- sample.sql --
 select distinct on (type, src_stack_id is null, src_g is null, src_p is null, src_m is null, label_set_id is null) *, labels(label_set_id)
 from stack_samples
-order by type, src_stack_id, src_g, src_p, src_m, label_set_id asc;
+order by type, src_stack_id, src_g, src_p, src_m, label_set_id, end_time_ns asc;
 -- sample.txt --
 ../testdata/testprog/go1.23.3.trace:
 +---------------+--------------+-------+------------------+--------------+-------+-------+------------+----------------------+
