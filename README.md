@@ -37,13 +37,10 @@ sqlprof -format=csv after.pprof \
 Then we can run a standalone `duckdb` session and run the following query to determine which functions were inlined due to pgo:
 
 ```sql
-select name
-from (
-    select * from 'after.csv'
-    except
-    select * from 'before.csv'
-) where inlined
-order by 1
+select name from 'after.csv' where inlined
+except
+select name from 'before.csv' where inlined
+order by 1;
 ```
 ```
         ┌─────────────────────────────────────────────┐

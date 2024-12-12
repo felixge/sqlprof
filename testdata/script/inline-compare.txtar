@@ -6,3 +6,47 @@ cp stdout after.csv
 
 # Anlyze which functions got inlined
 exec duckdb -c 'select name from (select * from ''after.csv'' except select * from ''before.csv'' b) where inlined order by 1'
+cmp stdout output.txt
+
+-- output.txt --
+┌─────────────────────────────────────────────┐
+│                    name                     │
+│                   varchar                   │
+├─────────────────────────────────────────────┤
+│ bytes.(*Buffer).Write                       │
+│ bytes.(*Buffer).WriteByte                   │
+│ bytes.(*Buffer).WriteString                 │
+│ encoding/json.appendString[go.shape.string] │
+│ encoding/json.intEncoder                    │
+│ internal/abi.(*Type).IfaceIndir             │
+│ internal/runtime/atomic.(*Int64).Load       │
+│ internal/runtime/atomic.(*Uint32).Add       │
+│ internal/runtime/atomic.(*Uint32).Load      │
+│ internal/runtime/atomic.(*Uint8).Load       │
+│ reflect.Value.Elem                          │
+│ reflect.Value.Field                         │
+│ reflect.Value.Index                         │
+│ reflect.add                                 │
+│ runtime.(*mSpanStateBox).get                │
+│ runtime.(*mcentral).fullUnswept             │
+│ runtime.(*mheap).setSpans                   │
+│ runtime.(*mspan).countAlloc                 │
+│ runtime.(*mspan).typePointersOfUnchecked    │
+│ runtime.acquirem                            │
+│ runtime.addb                                │
+│ runtime.findObject                          │
+│ runtime.gcDrain                             │
+│ runtime.greyobject                          │
+│ runtime.mmap                                │
+│ runtime.readUintptr                         │
+│ runtime.spanOfUnchecked                     │
+│ runtime.typePointers.next                   │
+│ runtime.wbBufFlush1                         │
+│ strconv.formatBits                          │
+│ strconv.formatDigits                        │
+│ strconv.ryuDigits32                         │
+│ strconv.ryuFtoaShortest                     │
+│ sync.(*WaitGroup).Wait                      │
+├─────────────────────────────────────────────┤
+│                   34 rows                   │
+└─────────────────────────────────────────────┘
