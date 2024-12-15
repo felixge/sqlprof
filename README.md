@@ -19,7 +19,7 @@ $ sqlprof -o go.duckdb go.trace
 $ sqlprof traces/*.trace 'SELECT * FROM g_transitions WHERE duration_ns > 50e6'
 ```
 
-## Query Examples
+## Use Case Examples
 
 ### Compare Inlining
 
@@ -127,6 +127,12 @@ order by 2 desc;
 │ background sweep │    0.45 │
 └──────────────────┴─────────┘
 ```
+
+## Custom Meta Data
+
+To load custom meta data, create a JSON file with the same name as the profile, adding a `.json` extension. For example, for `go.trace`, create `go.trace.json` in the same directory. Call the `meta_json()` function to access the data.
+
+TODO: Map reduce example.
 
 ## TODO
 
