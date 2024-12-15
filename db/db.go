@@ -21,14 +21,14 @@ import (
 //go:embed schema.sql stdlib.txt
 var fs embed.FS
 
-// ProfileKind is a kind of profile that can be converted into a database.
-type ProfileKind string
+// profileKind is a kind of profile that can be converted into a database.
+type profileKind string
 
 const (
-	// ProfileKindTrace represents a runtime trace.
-	ProfileKindTrace ProfileKind = "trace"
-	// ProfileKindPPROF represents a pprof profile.
-	ProfileKindPPROF ProfileKind = "pprof"
+	// profileKindTrace represents a runtime trace.
+	profileKindTrace profileKind = "trace"
+	// profileKindPPROF represents a pprof profile.
+	profileKindPPROF profileKind = "pprof"
 )
 
 // Profile is a profile that can be converted into a database.
@@ -61,11 +61,11 @@ func Create(duckPath string, p Profile) (*DB, error) {
 	}
 
 	switch guessFileType(p.Filename) {
-	case ProfileKindTrace:
+	case profileKindTrace:
 		if err := db.loadTrace(context.Background(), p.Data); err != nil {
 			return nil, err
 		}
-	case ProfileKindPPROF:
+	case profileKindPPROF:
 		if err := db.loadPPROF(context.Background(), p.Data); err != nil {
 			return nil, err
 		}
@@ -75,13 +75,13 @@ func Create(duckPath string, p Profile) (*DB, error) {
 	return db, nil
 }
 
-func guessFileType(filename string) ProfileKind {
+func guessFileType(filename string) profileKind {
 	// TODO: make this more robust.
 	switch {
 	case strings.HasSuffix(filename, ".pprof"):
-		return ProfileKindPPROF
+		return profileKindPPROF
 	default:
-		return ProfileKindTrace
+		return profileKindTrace
 	}
 }
 
