@@ -156,10 +156,18 @@ func loadProfile(profilePath string) (d *db.DB, err error) {
 	// srcPath or the profile loading code could have changed.
 	_ = os.Remove(duckPath)
 
+	// Load the profile metadata, if it exists.
+	var meta []byte
+	meta, err = os.ReadFile(profilePath + ".json")
+	if err != nil && !os.IsNotExist(err) {
+		return
+	}
+
 	// Load the profile into the database.
 	profile := db.Profile{
 		Filename: profileFile.Name(),
 		Data:     profileFile,
+		Meta:     meta,
 	}
 	if d, err = db.Create(duckPath, profile); err != nil {
 		return nil, fmt.Errorf("failed to create duckdb: path=%q err=%w", duckPath, err)

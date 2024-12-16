@@ -8,10 +8,10 @@ import (
 	"database/sql/driver"
 	"embed"
 	"encoding/binary"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
-	"os"
 	"strings"
 
 	"github.com/google/pprof/profile"
@@ -34,8 +34,9 @@ const (
 
 // Profile is a profile that can be converted into a database.
 type Profile struct {
-	Data     io.Reader
 	Filename string
+	Data     io.Reader
+	Meta     json.RawMessage
 }
 
 // Create creates a new duckdb at the given path and loads the profile into it.
@@ -59,7 +60,7 @@ func Create(duckPath string, p Profile) (*DB, error) {
 		return nil, errors.Join(err, db.Close())
 	} else if _, err := db.Exec(stdlibMacro); err != nil {
 		return nil, errors.Join(err, db.Close())
-	} else if err := insertCustomMeta(db.DB, p.Filename); err != nil {
+	} else if err := insertCustomMeta(db.DB, p.Meta); err != nil {
 		return nil, errors.Join(err, db.Close())
 	}
 
@@ -640,15 +641,8 @@ func stdlibMacro() (string, error) {
 	return fmt.Sprintf(tmpl, vals), nil
 }
 
-func insertCustomMeta(db *sql.DB, filename string) error {
-	data, err := os.ReadFile(filename + ".json")
-	if errors.Is(err, os.ErrNotExist) {
-		return nil
-	} else if err != nil {
-		return err
-	}
-
-	escapedData := strings.ReplaceAll(string(data), "'", "''")
-	_, err = db.Exec(`create macro custom_meta() AS (select '` + escapedData + `'::json);`)
+func insertCustomMeta(db *sql.DB, meta json.RawMessage) error {
+	escaped := strings.ReplaceAll(string(meta), "'", "''")
+	_, err := db.Exec(`create macro custom_meta() AS (select '` + escaped + `'::json);`)
 	return err
 }
