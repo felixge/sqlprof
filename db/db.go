@@ -41,16 +41,11 @@ type Profile struct {
 
 // Create creates a new duckdb at the given path and loads the profile into it.
 func Create(duckPath string, p Profile) (*DB, error) {
-	connector, err := duckdb.NewConnector(duckPath, nil)
+	db, err := Open(duckPath)
 	if err != nil {
 		return nil, err
 	}
 
-	db := &DB{
-		DB:   sql.OpenDB(connector),
-		path: duckPath,
-		duck: connector,
-	}
 	b, err := fs.ReadFile("schema.sql")
 	if err != nil {
 		return nil, errors.Join(err, db.Close())
@@ -75,6 +70,20 @@ func Create(duckPath string, p Profile) (*DB, error) {
 		}
 	default:
 		return nil, fmt.Errorf("unknown profile type: %q", p.Filename)
+	}
+	return db, nil
+}
+
+func Open(duckPath string) (*DB, error) {
+	connector, err := duckdb.NewConnector(duckPath, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	db := &DB{
+		DB:   sql.OpenDB(connector),
+		path: duckPath,
+		duck: connector,
 	}
 	return db, nil
 }
