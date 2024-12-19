@@ -183,12 +183,12 @@ order by 2 desc;
 │  stack_category  │ cpu_s  │ percent │
 │     varchar      │ double │ double  │
 ├──────────────────┼────────┼─────────┤
-│ application      │    8.2 │   84.57 │
-│ allocation       │    0.5 │    5.56 │
-│ background gc    │    0.4 │    4.12 │
-│ write barrier    │    0.4 │    3.81 │
-│ background sweep │    0.1 │    1.44 │
-│ gc assist        │    0.1 │    0.51 │
+│                  │    2.4 │   37.36 │
+│ allocation       │    1.6 │   24.81 │
+│ write barrier    │    0.6 │    8.68 │
+│ background sweep │    0.1 │    1.86 │
+│ background gc    │    0.1 │    1.71 │
+│ gc assist        │    0.0 │    0.31 │
 └──────────────────┴────────┴─────────┘
 ```
 
