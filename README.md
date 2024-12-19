@@ -36,6 +36,47 @@ There is currently no dedicated documentation for sqlprof. But here are some poi
 
 ## Use Case Examples
 
+### Off-CPU Histograms
+
+Let's say you want to analyze the distribution of durations that goroutines spend Off-CPU via a specific stack trace.
+
+Below is an example of doing this for `time.Sleep` calls:
+
+```
+sqlprof ./testdata/testprog/go1.23.3.trace
+```
+```sql
+with sleeps as (
+    select *
+    from g_transitions
+    where list_contains(stack(stack_id), 'time.Sleep')
+)
+
+select * from histogram(sleeps, duration_ns);
+```
+```
+┌──────────────────────────┬────────┬──────────────────────────────────────────────────────────────────────────────────┐
+│           bin            │ count  │                                       bar                                        │
+│         varchar          │ uint64 │                                     varchar                                      │
+├──────────────────────────┼────────┼──────────────────────────────────────────────────────────────────────────────────┤
+│ x <= 2000000             │    107 │ ████████████████████████████████████████████████████████████████████████████████ │
+│ 2000000 < x <= 4000000   │     13 │ █████████▋                                                                       │
+│ 4000000 < x <= 6000000   │     12 │ ████████▉                                                                        │
+│ 6000000 < x <= 8000000   │     15 │ ███████████▏                                                                     │
+│ 8000000 < x <= 10000000  │      7 │ █████▏                                                                           │
+│ 10000000 < x <= 12000000 │     12 │ ████████▉                                                                        │
+│ 12000000 < x <= 14000000 │      5 │ ███▋                                                                             │
+│ 14000000 < x <= 16000000 │      6 │ ████▍                                                                            │
+│ 16000000 < x <= 18000000 │      5 │ ███▋                                                                             │
+│ 18000000 < x <= 20000000 │      3 │ ██▏                                                                              │
+│ 20000000 < x <= 22000000 │      9 │ ██████▋                                                                          │
+│ 22000000 < x <= 24000000 │      3 │ ██▏                                                                              │
+│ 24000000 < x <= 26000000 │      2 │ █▍                                                                               │
+├──────────────────────────┴────────┴──────────────────────────────────────────────────────────────────────────────────┤
+│ 13 rows                                                                                                    3 columns │
+└──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+```
+
 ### Compare Inlining
 
 Let's say you are trying to understand the impact [profile-guided optimization](https://go.dev/doc/pgo) has on the inlining decisions made by the Go compiler.
@@ -165,3 +206,5 @@ TODO: Map reduce example.
     - [ ] EventLog
     - [ ] EventExperimental
 - [ ] pprof
+    - [ ] meta columns
+    - [ ] pivot?
