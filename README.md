@@ -3,7 +3,7 @@
 sqlprof is a power-user tool for exploring profiling data using duckdb SQL queries.
 Currently it supports Go runtime traces and pprof files.
 
-⚠️: This project is still in early stages of development. The names of tables, columns and functions are subject to change.
+⚠️ This project is still in early stages of development. The names of tables, columns and functions are subject to change.
 
 ## Installation
 
