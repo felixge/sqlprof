@@ -3,21 +3,36 @@
 sqlprof is a power-user tool for exploring profiling data using duckdb SQL queries.
 Currently it supports Go runtime traces and pprof files.
 
+⚠️: This project is still in early stages of development. The names of tables, columns and functions are subject to change.
+
+## Installation
+
+```
+go install github.com/felixge/sqlprof@latest
+```
+
 ## Command Line Usage
 
 ``` bash
 # Explore a pprof in an interactive duckdb session
-$ sqlprof go.pprof
+sqlprof go.pprof
 
 # Show the number of goroutines included in a runtime trace
-$ sqlprof go.trace 'SELECT count(*) FROM goroutines'
+sqlprof go.trace 'SELECT count(*) FROM goroutines'
 
 # Convert a profile into a permanent duckdb
-$ sqlprof -o go.duckdb go.trace
+sqlprof -o go.duckdb go.trace
 
 # Run a query against a directory of profiles
-$ sqlprof traces/*.trace 'SELECT * FROM g_transitions WHERE duration_ns > 50e6'
+sqlprof traces/*.trace 'SELECT * FROM g_transitions WHERE duration_ns > 50e6'
 ```
+
+## Documentation
+
+There is currently no dedicated documentation for sqlprof. But here are some pointers:
+
+* Use the `.tables` command in duckdb to list all tables and views.
+* Look at the [db/schema.sql](./db/schema.sql) for more details on the schema.
 
 ## Use Case Examples
 
