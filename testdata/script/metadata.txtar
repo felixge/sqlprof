@@ -1,0 +1,23 @@
+# Copy a profile to our working dir (the original is in a symlink dir which we don't want to touch)
+cp testdata/pgoinline/before-pgo.pprof profile.pprof
+
+# Query the resulting database
+exec sqlprof profile.pprof 'select custom_meta()->''bar'''
+cmp stdout output.txt
+
+-- profile.pprof.json --
+{
+    "foo": 123,
+    "bar": [
+        {"key": 1},
+        {"key": 2},
+        {"key": 3},
+        {"key": "'foo'"},
+    ]
+}
+-- output.txt --
++-------------------------------------------------+
+|            (custom_meta() -> 'bar')             |
++-------------------------------------------------+
+| [{"key":1},{"key":2},{"key":3},{"key":"'foo'"}] |
++-------------------------------------------------+
