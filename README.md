@@ -142,46 +142,54 @@ order by 1;
         └─────────────────────────────────────────────┘
 ```
 
-### Determine GC Overhead
+### Categorize Stack Traces
 
-The query below will show the percentage of CPU samples that are spent in various GC-related functions, as well as the cumulative percentage.
+Go's official GC guide [recommends](https://golang.org/doc/gc-guide#Identiying_costs) to identify GC costs by analyzing stack traces in CPU profiles.
 
+Below is an example of using sqlprof to categorize memory management related stack traces of a CPU profile produced by a JSON decoding benchmark:
+
+```
+sqlprof ./testdata/gcoverhead/go1.23.3.pprof
+```
 ```sql
-create temporary macro gc_category(_funcs) as (
+create or replace temporary macro stack_category(_funcs) as (
     case
         when list_contains(_funcs, 'runtime.gcBgMarkWorker') then 'background gc'
-        when list_contains(_funcs, 'runtime.gcAssistAlloc') then 'gc assist'
-        when list_contains(_funcs, 'gcWriteBarrier') then 'write barrier'
         when list_contains(_funcs, 'runtime.bgsweep') then 'background sweep'
+        when list_contains(_funcs, 'gcWriteBarrier') then 'write barrier'
+        when list_contains(_funcs, 'runtime.gcAssistAlloc') then 'gc assist'
+        when list_contains(_funcs, 'runtime.mallocgc') then 'allocation'
     end
 );
 
 with cpu_samples as (
     select funcs(src_stack_id) as funcs, value
     from stack_samples
-    where type = 'samples/count'
+    where type = 'cpu/nanoseconds'
 )
 
 select 
-    gc_category(funcs) as gc_category,
+    stack_category(funcs) as stack_category,
+    round(sum(value) / 1e9, 1) cpu_s,
     round(sum(value) / (select sum(value) from cpu_samples) * 100, 2) as percent
 from cpu_samples
-where gc_category is not null
-group by grouping sets ((gc_category), ())
+where stack_category(funcs) is not null
+group by grouping sets ((stack_category), ())
 order by 2 desc;
 ```
 
 ```
-┌──────────────────┬─────────┐
-│   gc_category    │ percent │
-│     varchar      │ double  │
-├──────────────────┼─────────┤
-│                  │   10.51 │
-│ background gc    │    6.56 │
-│ write barrier    │    1.98 │
-│ gc assist        │    1.53 │
-│ background sweep │    0.45 │
-└──────────────────┴─────────┘
+┌──────────────────┬────────┬─────────┐
+│  stack_category  │ cpu_s  │ percent │
+│     varchar      │ double │ double  │
+├──────────────────┼────────┼─────────┤
+│ application      │    8.2 │   84.57 │
+│ allocation       │    0.5 │    5.56 │
+│ background gc    │    0.4 │    4.12 │
+│ write barrier    │    0.4 │    3.81 │
+│ background sweep │    0.1 │    1.44 │
+│ gc assist        │    0.1 │    0.51 │
+└──────────────────┴────────┴─────────┘
 ```
 
 ## Custom Meta Data
