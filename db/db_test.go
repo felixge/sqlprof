@@ -30,7 +30,7 @@ func TestQueries(t *testing.T) {
 			whitelist: []string{"table_stack_samples", "view_stacks", "table_frames", "table_label_sets"},
 		},
 		{
-			path:      filepath.Join("..", "testdata", "gcoverhead", "cpu.pprof"),
+			path:      filepath.Join("..", "testdata", "gcoverhead", "go1.23.3.pprof"),
 			whitelist: []string{"query_gc_overhead"},
 		},
 	}
