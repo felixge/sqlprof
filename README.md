@@ -192,6 +192,55 @@ order by 2 desc;
 └──────────────────┴────────┴─────────┘
 ```
 
+### Identify Spikes in Runnable Goroutines
+
+Spikes in runnable goroutines can cause increased scheduling latency. The
+following query tracks the runnable goroutines over time (in 1ms buckets
+starting at the beginning of the provided execution trace).
+
+```
+sqlprof /path/to/trace.bin
+```
+```sql
+select
+    bucket,
+    enterrunnable,
+    leaverunnable,
+    enterrunnable - leaverunnable as delta,
+    sum(enterrunnable - leaverunnable) over (order by bucket) as runnable_count
+  from (
+    select
+      (end_time_ns - (select min(end_time_ns) from g_transitions)) // 1_000_000 as bucket,
+      count(*) filter (where to_state = 'runnable') as enterrunnable,
+      count(*) filter (where from_state = 'runnable') as leaverunnable
+    from g_transitions
+    where from_state = 'runnable' or to_state = 'runnable'
+    group by bucket
+  )
+  order by runnable_count desc;
+```
+
+The output below indicates that the runnable goroutine count peaks at 577ms into
+the execution trace, with a count of over 5000 runnable goroutines at that time.
+
+```
+┌────────┬───────────────┬───────────────┬───────┬────────────────┐
+│ bucket │ enterrunnable │ leaverunnable │ delta │ runnable_count │
+│ int64  │     int64     │     int64     │ int64 │     int128     │
+├────────┼───────────────┼───────────────┼───────┼────────────────┤
+│    577 │           251 │           187 │    64 │           5118 │
+│    576 │           335 │           151 │   184 │           5054 │
+│    669 │           350 │           134 │   216 │           5015 │
+│     ·  │             · │             · │     · │              · │
+│     ·  │             · │             · │     · │              · │
+│     ·  │             · │             · │     · │              · │
+│    436 │           103 │           104 │    -1 │              0 │
+│    454 │            74 │            74 │     0 │              0 │
+│    461 │            57 │            58 │    -1 │              0 │
+│   1005 │           172 │           174 │    -2 │              0 │
+├────────┴───────────────┴───────────────┴───────┴────────────────┤
+```
+
 ## Custom Meta Data
 
 To load custom meta data, create a JSON file with the same name as the profile, adding a `.json` extension. For example, for `go.trace`, create `go.trace.json` in the same directory. Call the `meta_json()` function to access the data.
